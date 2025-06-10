@@ -1,0 +1,13 @@
+int32 id
+string name
+
+int32[] images_ids
+int32[] annotations_ids
+
+interactive_yolo_interfaces/Float32Tensor[] embeddings
+interactive_yolo_interfaces/Float32Tensor zeroshot_embedding
+
+float64 embeddings_set_time
+float64 zeroshot_embedding_set_time
+float64 last_member_update_time
+float64 creation_time

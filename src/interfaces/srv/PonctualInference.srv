@@ -1,0 +1,4 @@
+string[] classes_names
+sensor_msgs/Image image
+---
+interactive_yolo_interfaces/Prediction[] predictions

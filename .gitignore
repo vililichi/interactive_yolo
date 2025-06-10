@@ -1,0 +1,14 @@
+build/
+install/
+log/
+venv/
+tools/
+database/
+models/
+weights/
+*__pycache__/
+*.egg-info/
+.vscode/
+
+mobileclip_blt.pt
+mobileclip_blt.ts

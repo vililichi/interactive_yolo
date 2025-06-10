@@ -1,0 +1,2 @@
+interactive_yolo_interfaces/Prediction[] predictions
+sensor_msgs/Image image

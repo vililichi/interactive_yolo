@@ -1,0 +1,3 @@
+string class_name
+bool bbox_valid
+interactive_yolo_interfaces/Bbox bbox

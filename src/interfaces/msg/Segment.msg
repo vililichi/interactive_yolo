@@ -1,0 +1,1 @@
+interactive_yolo_interfaces/Point2D[] points

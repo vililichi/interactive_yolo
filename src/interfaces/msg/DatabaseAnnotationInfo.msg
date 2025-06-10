@@ -1,0 +1,16 @@
+int32 id
+
+int32 image_id
+int32 category_id
+
+interactive_yolo_interfaces/Bbox bbox
+interactive_yolo_interfaces/BoolTensor mask
+interactive_yolo_interfaces/Float32Tensor embedding
+
+float64 embedding_set_time
+float64 bbox_set_time
+float64 mask_set_time
+float64 last_member_update_time
+float64 creation_time
+
+bool embedding_use_mask

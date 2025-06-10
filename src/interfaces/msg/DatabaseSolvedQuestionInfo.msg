@@ -1,0 +1,6 @@
+interactive_yolo_interfaces/DatabaseQuestionInfo question
+
+float64 interaction_duration
+float64 solved_time
+
+int32 category_id

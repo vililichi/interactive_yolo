@@ -1,0 +1,8 @@
+string class_name
+sensor_msgs/Image image_to_annotate
+---
+uint64 request_id
+bool canceled
+interactive_yolo_interfaces/Annotation annotation
+---
+bool is_active

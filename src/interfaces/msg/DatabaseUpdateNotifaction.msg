@@ -1,0 +1,5 @@
+int32 id
+int16 REGISTERED = 0
+int16 EMBEDDING_UPDATE = 1
+int16 MEMBER_UPDATE = 2
+int16 type

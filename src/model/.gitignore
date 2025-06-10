@@ -1,0 +1,7 @@
+.venv
+.vscode
+*.pyc
+*.pt
+interactive_yolo_model/tools/evaluate_model/input/*
+interactive_yolo_model/tools/evaluate_model/output/*
+interactive_yolo_model/tools/classes_distances_histogram/output/*

@@ -1,0 +1,3 @@
+string class_name
+float64 confidence
+interactive_yolo_interfaces/Bbox bbox
