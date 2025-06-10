@@ -1,0 +1,8 @@
+int32 image_id
+interactive_yolo_interfaces/BoolTensor mask
+interactive_yolo_interfaces/Float32Tensor embedding
+float64 mask_confidence
+int32   estimation_category_id
+float64 estimation_confidence
+---
+int32 id

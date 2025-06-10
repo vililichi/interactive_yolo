@@ -1,0 +1,5 @@
+int32 id
+bool use_mask
+interactive_yolo_interfaces/Float32Tensor embedding
+---
+bool success

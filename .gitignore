@@ -2,13 +2,21 @@ build/
 install/
 log/
 venv/
-tools/
-database/
 models/
 weights/
-*__pycache__/
+__pycache__/
 *.egg-info/
 .vscode/
 
 mobileclip_blt.pt
 mobileclip_blt.ts
+
+database/images/
+database/annotations.json
+database/categories.json
+database/images.json
+database/questions.json
+
+tools/*/output/
+tools/*/input/
+tools/captured_images/

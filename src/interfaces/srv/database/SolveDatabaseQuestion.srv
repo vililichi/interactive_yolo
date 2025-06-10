@@ -1,0 +1,6 @@
+int32 id
+bool object_valid
+string object_name
+float64 interaction_time
+---
+bool success

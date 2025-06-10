@@ -1,0 +1,5 @@
+int32 image_id
+int32 category_id
+interactive_yolo_interfaces/Bbox bbox
+---
+int32 id
