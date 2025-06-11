@@ -459,10 +459,10 @@ class ExplorationNode(Node):
                 self.output_result = result
                 self.output_update_time = time.time()
 
-            # nms
-            keeped_result = list()
+            
+            # extract result
+            extracted_results = list()
             for i in range(len(result.boxes)):
-                
                 boxe = result.boxes[i]
                 mask = result.masks.data[i].to(dtype=torch.bool)
                 bboxes = boxe.xyxy[0]
@@ -470,31 +470,56 @@ class ExplorationNode(Node):
                 confidence = boxe.conf.item()
 
                 if class_name == "__NOTHING__":
-                    continue
+                    confidence = confidence ** 3.0
 
                 if(confidence < 0.1 ):
                     continue
 
-                keep = True
-                remove_id = []
-                for i in range(len(keeped_result)):
-                    k_bboxes, k_class_name, k_confidence, k_mask = keeped_result[i]
-                    if(k_class_name != class_name):
+                extracted_results.append((bboxes, class_name, confidence, mask))
+
+
+            # filter nms and nothing
+            keep_id = list(range(len(extracted_results)))
+            for i in range(len(extracted_results)):
+                
+                (bboxes, class_name, confidence, mask) = extracted_results[i]
+                if class_name == "__NOTHING__":
+                    if i in keep_id:
+                        keep_id.remove(i)
+
+                for j in range(i+1, len(extracted_results)):
+
+                    (k_bboxes, k_class_name, k_confidence, k_mask) = extracted_results[j]
+
+                    iou_threshold = 0.5
+
+                    if( (i not in keep_id) and (j not in keep_id)):
                         continue
+
+                    if(k_class_name == "__NOTHING__" or class_name == "__NOTHING__"):
+                        iou_threshold = 0.8
+
+                    elif(k_class_name == class_name):
+                        iou_threshold = 0.4
+
+                    else:
+                        continue
+
                     intersection = torch.count_nonzero(torch.logical_and(mask, k_mask)).item()
                     union = torch.count_nonzero(torch.logical_or(mask, k_mask)).item()
                     iou = float(intersection) / float(union)
-                    if( iou > 0.7 ):
+
+                    if( iou > iou_threshold ):
                         if( confidence > k_confidence):
-                            remove_id.append(i)
+                            if j in keep_id:
+                                keep_id.remove(j)
                         else:
-                            keep = False
-                if len(remove_id) > 0:
-                    keeped_result.pop(remove_id)
-                if keep == True:
-                    keeped_result.append((bboxes, class_name, confidence, mask))
+                            if i in keep_id:
+                                keep_id.remove(i)
+            
+            keeped_result = [ x for i, x in enumerate(extracted_results) if i in keep_id ]
 
-
+            # format prediction
             predictions = list()
             for bboxes, class_name, confidence, mask in keeped_result:
 
