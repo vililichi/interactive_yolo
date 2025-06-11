@@ -184,9 +184,17 @@ class QuestionLoopNode(Node):
 
             cv_image = cv2.addWeighted(img_gray_bgr, alpha, cv_image_alt, beta, 0)
 
+            estimation_label = None
+            if question_info.estimation_category_id >= 0:
+                estimation_category_response = self.database.GetDatabaseCategory(question_info.estimation_category_id)
+                if estimation_category_response is not None:
+                    if estimation_category_response.info.id == question_info.estimation_category_id:
+                        estimation_label = estimation_category_response.info.name
+
+
             print("ask question")
             start_ask_time = time.time()
-            category_name = self.question_interface.ask_question(cv_image)
+            category_name = self.question_interface.ask_question(cv_image, estimation_label)
             interaction_time = time.time() - start_ask_time
 
             print("solve question")

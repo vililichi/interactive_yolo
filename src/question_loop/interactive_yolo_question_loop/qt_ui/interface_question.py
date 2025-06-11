@@ -52,7 +52,10 @@ class interface_question:
     def set_capture_callback(self, callback):
         self.capture_widget.setCaptureCallback(callback)
 
-    def ask_question(self, cv_image)->str:
+    def ask_question(self, cv_image, estimation_label = None)->str:
+
+        if estimation_label is not None:
+            self.question_widget.setAnswer(estimation_label)
 
         self.question_widget.setImage(cv_image)
         self.answer = None
