@@ -454,20 +454,19 @@ class Database:
             if( question_id in self.questions.keys()):
                 question = self.questions[question_id]
                 score = 1.0 #question.mask_confidence ** 0.5
-                #score *= ((1.0 - (question.estimation_confidence))**0.5)
-                #score *= (question.mask_relative_area**0.05)
+                #
                 
 
                 emb_score = 1.0 
                 for solved_question in self.solved_questions.values():
-                    time_offset = ((actual_time - solved_question.solved_time) / 600000.0)
+                    time_offset = ((actual_time - solved_question.solved_time) / 6000000.0)
                     if time_offset >= 1.0:
                         continue
 
                     question_emb = float32TensorToNdarray(question.embedding)
                     solved_question_emb = float32TensorToNdarray(solved_question.question.embedding)
                     dist = np.linalg.norm(question_emb - solved_question_emb)
-                    sub_emb_score = 1.0 - dist
+                    sub_emb_score = 1.0 - (dist**0.5)
                     sub_emb_score -= time_offset
                     sub_emb_score = max(sub_emb_score, 0.0)
                     emb_score -= sub_emb_score
@@ -476,6 +475,9 @@ class Database:
     
                 confidence_score = (1.0 - (question.estimation_confidence))**0.5
                 score *= min(confidence_score, max(emb_score, 0.0))
+
+                score *= question.mask_confidence ** 0.5
+                score *= question.mask_relative_area ** 0.25
 
                 score -= ((actual_time - question.creation_time) / 300.0)
 
