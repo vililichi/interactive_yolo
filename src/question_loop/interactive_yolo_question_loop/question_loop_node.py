@@ -199,16 +199,22 @@ class QuestionLoopNode(Node):
             mask = boolTensorToNdArray(question_info.mask)
 
             img_gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-            img_gray_bgr = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+            img_bgr_mask = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
 
-            cv_image_alt = img_gray_bgr.copy()
-            color = [0,0,255]
-            cv_image_alt[mask] = color
+            img_gray = img_gray.copy()
+            img_gray[:] = [0]
+            img_gray[mask] = [255]
 
-            alpha = 0.25
-            beta = 1.0 - alpha
+            _, thresh = cv2.threshold(img_gray, 127, 255, 0)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            cv_image = cv2.addWeighted(img_gray_bgr, alpha, cv_image_alt, beta, 0)
+            color_a = [0,0,0]
+            color_b = [0,0,255]
+
+            cv2.drawContours(img_bgr_mask, contours, -1, color_a, 11)
+            cv2.drawContours(img_bgr_mask, contours, -1, color_b, 7)
+            cv2.drawContours(img_bgr_mask, contours, -1, color_a, 3)
+            img_bgr_mask[mask] = cv_image[mask]
 
             estimation_label = None
             if question_info.estimation_category_id >= 0:
@@ -220,7 +226,7 @@ class QuestionLoopNode(Node):
 
             print("ask question")
             start_ask_time = time.time()
-            category_name = self.question_interface.ask_question(cv_image, estimation_label)
+            category_name = self.question_interface.ask_question(img_bgr_mask, estimation_label)
             interaction_time = time.time() - start_ask_time
 
             print("solve question")
