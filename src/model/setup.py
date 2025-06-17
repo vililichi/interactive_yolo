@@ -29,7 +29,8 @@ setup(
             'ponctual_inference_node = interactive_yolo_model.ponctual_inference_node:main',
             'model_node = interactive_yolo_model.model_node:main',
             'tool_classes_distances_histogram = interactive_yolo_model.tools.classes_distances_histogram.classes_distances_histogram:main',
-            'tool_evaluate_model = interactive_yolo_model.tools.evaluate_model.evaluate_model:main'
+            'tool_evaluate_model = interactive_yolo_model.tools.evaluate_model.evaluate_model:main',
+            'tool_generate_engine_models = interactive_yolo_model.tools.generate_engine_models.generate_engine_models:main'
         ],
     },
 )

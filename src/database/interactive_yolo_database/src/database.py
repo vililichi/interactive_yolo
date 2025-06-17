@@ -3,7 +3,6 @@
 from typing import Dict, List
 
 import os
-import pickle
 import cv2
 import numpy as np
 import time
@@ -46,6 +45,7 @@ def empty_category_info()->DatabaseCategoryInfo:
     category_info.images_ids                    = []
     category_info.annotations_ids               = []
     category_info.embeddings                    = []
+    category_info.embeddings_scores_exponential = []
     category_info.zeroshot_embedding            = empty_tensor()
     category_info.embeddings_set_time           = 0.0
     category_info.zeroshot_embedding_set_time   = 0.0
@@ -320,7 +320,7 @@ class Database:
             return False
 
     def _clean_images(self):
-        deprecate_time = time.time() - 604800
+        deprecate_time = time.time() - 600
 
         with self._images_lock:
             img_keys = list(self.images.keys())
@@ -466,15 +466,16 @@ class Database:
                     question_emb = float32TensorToNdarray(question.embedding)
                     solved_question_emb = float32TensorToNdarray(solved_question.question.embedding)
                     dist = np.linalg.norm(question_emb - solved_question_emb)
-                    sub_emb_score = 1.0 - (dist**0.5)
+                    sub_emb_score = 1.0 - (dist**0.33)
                     sub_emb_score -= time_offset
                     sub_emb_score = max(sub_emb_score, 0.0)
                     emb_score -= sub_emb_score
                     if( emb_score <= 0.0 ):
+                        emb_score = 0.0
                         break
     
                 confidence_score = (1.0 - (question.estimation_confidence))**0.5
-                score *= min(confidence_score, max(emb_score, 0.0))
+                score *= min(confidence_score, emb_score)
 
                 score *= question.mask_confidence ** 0.5
                 score *= question.mask_relative_area ** 0.25
@@ -611,12 +612,13 @@ class Database:
 
             return True
 
-    def set_category_embeddings(self, id:int, embeddings:List[Float32Tensor])->bool:   
+    def set_category_embeddings(self, id:int, embeddings:List[Float32Tensor], embeddings_scores_exponential:List[float])->bool:   
         with self._categories_lock: 
             if not id in self.categories.keys():
                 return False
 
             self.categories[id].embeddings = embeddings
+            self.categories[id].embeddings_scores_exponential = embeddings_scores_exponential
             self.categories[id].embeddings_set_time = time.time()
 
             with self._need_save_lock:
@@ -638,6 +640,8 @@ class Database:
             return True
 
     def _save_images_info(self):
+
+        self._clean_images()
 
         with self._images_lock:
             json_dict = {

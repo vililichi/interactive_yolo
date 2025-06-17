@@ -186,7 +186,7 @@ class AnnotationDatabaseNode(Node):
     def callback_SetDatabaseCategoryEmbeddings(self, request: SetDatabaseCategoryEmbeddings.Request, response: SetDatabaseCategoryEmbeddings.Response):
         
         print( "set_category_embeddings[",request.id,"]" )
-        response.success = self.database.set_category_embeddings(request.id, request.embeddings)
+        response.success = self.database.set_category_embeddings(request.id, request.embeddings, request.embeddings_scores_exponential)
 
         if( response.success):
             print("send notification")

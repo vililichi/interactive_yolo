@@ -9,11 +9,14 @@ from typing import List, Tuple
 class NewObjectDetectionParameters():
     def __init__(self):
         self.model_yolo_result = None
+        self.model_yolo_result_score_exponant = None
         self.model_sam_result = None
         self.explain_iou_exp = 1.0
         self.explain_conf_exp = 1.2
         self.min_mask_size = 0
         self.min_mask_relative_mask_size = 0.0
+        self.min_mask_score = 0.25
+        self.max_explication_score = 0.6
     
 def new_object_detection(cv_img:np.ndarray, parameters:NewObjectDetectionParameters) -> Tuple[Tuple[List[torch.Tensor], List[float], List[str]], Tuple[List[torch.Tensor], List[float], List[str]], Tuple[List[torch.Tensor], List[float], List[str]], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     
@@ -32,7 +35,7 @@ def new_object_detection(cv_img:np.ndarray, parameters:NewObjectDetectionParamet
     valid_confs_sam = []
     valid_labels_sam = []
     for i in range(len(masks_sam)):
-        if masks_sam[i].count_nonzero() > mask_size_threshold:
+        if masks_sam[i].count_nonzero() > mask_size_threshold and confs_sam[i] > parameters.min_mask_score:
             valid_masks_sam.append(masks_sam[i])
             valid_confs_sam.append(confs_sam[i])
             valid_labels_sam.append(labels_sam[i])
@@ -45,7 +48,10 @@ def new_object_detection(cv_img:np.ndarray, parameters:NewObjectDetectionParamet
     labels_yolo = []
     if( results_yolo.masks is not None):
         masks_yolo = [ x for x in torch.unbind(extract_resized_masks(results_yolo))]
-        confs_yolo = [ x.item() for x in torch.unbind(results_yolo.boxes.conf)]
+        if parameters.model_yolo_result_score_exponant is not None:
+            confs_yolo = [ x.item() ** parameters.model_yolo_result_score_exponant[int(results_yolo.boxes.cls[i].item())] for i, x in enumerate(torch.unbind(results_yolo.boxes.conf))]
+        else:
+            confs_yolo = [ x.item() for x in torch.unbind(results_yolo.boxes.conf)]
         labels_yolo = [ " [ CONF = {conf:.2f}, NAME = {name} ]".format(conf = confs_yolo[i], name=results_yolo.names[results_yolo.boxes.cls[i].item()]) for i in range(len(confs_yolo)) ]
 
     # Try explain
@@ -64,7 +70,7 @@ def new_object_detection(cv_img:np.ndarray, parameters:NewObjectDetectionParamet
             unexplained_labels.append(label)
             unexplained_estimation_category_label.append(None)
             unexplained_estimation_conf.append(0.0)
-        elif explication_score[i] < 0.6:
+        elif explication_score[i] < parameters.max_explication_score:
             label = " [ LABEL = {label}, LABEL_CONF = {label_conf:.2} ]".format(label=results_yolo.names[results_yolo.boxes.cls[explication_id[i]].item()], label_conf=explication_score[i]) 
             unexplained_masks.append(masks_sam[i])
             unexplained_confs.append(confs_sam[i])

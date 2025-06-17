@@ -8,7 +8,8 @@ from tensor_msg_conversion import float32TensorToTorchTensor
 class EmbeddingGenerator:
     def __init__(self, database_service: DatabaseServices, ):
         self._database_service = database_service
-        self._embedding_dict:Dict[List[torch.Tensor]] = dict()
+        self._embedding_dict:Dict[str, List[torch.Tensor]] = dict()
+        self._embedding_score_exponent_dict:Dict[str, List[float]] = dict()
         self._last_update_time = 0.0
 
     def update(self) -> bool:
@@ -45,10 +46,13 @@ class EmbeddingGenerator:
 
             if update_category:
                 pe_list = []
-                for pe_msg in category_info.embeddings:
-                    pe = float32TensorToTorchTensor(pe_msg)
+                score_list = []
+                for i in range(len(category_info.embeddings)):
+                    pe = float32TensorToTorchTensor(category_info.embeddings[i])
                     pe_list.append(pe)
+                    score_list.append(category_info.embeddings_scores_exponential[i])
                 self._embedding_dict[category_info.name] = pe_list
+                self._embedding_score_exponent_dict[category_info.name] = score_list
                 embedding_updated = True
         
         self._last_update_time = update_time
@@ -75,6 +79,7 @@ class EmbeddingGenerator:
 
         pe_list = []
         alias_name_list = []
+        alias_score_exponent_list = []
         category_alias_to_name = dict()
 
         for category_name in categories_name:
@@ -91,6 +96,7 @@ class EmbeddingGenerator:
                     vpe = fallback_model.get_text_pe([category_name,]).cpu()
 
                     alias_name_list.append(alias_name)
+                    alias_score_exponent_list.append(1.0)  # Default score exponent
                     pe_list.append(vpe)
 
                     category_alias_to_name[alias_name] = category_name
@@ -99,16 +105,16 @@ class EmbeddingGenerator:
                     Exception(f"Category {category_name} not found and no fallback model available.")
             else:
                 itt = 0
-                for pe in self._embedding_dict[category_name]:
+                for itt in range(len(self._embedding_dict[category_name])):
 
                     alias_name = "__CLUSTER" + str(itt) + "__" + category_name
-                    itt += 1
 
                     alias_name_list.append(alias_name)
-                    pe_list.append(pe)
+                    alias_score_exponent_list.append(self._embedding_score_exponent_dict[category_name][itt])
+                    pe_list.append(self._embedding_dict[category_name][itt])
 
                     category_alias_to_name[alias_name] = category_name
 
-        return torch.cat(pe_list, dim=1), alias_name_list, category_alias_to_name
+        return torch.cat(pe_list, dim=1), alias_name_list, category_alias_to_name, alias_score_exponent_list
 
 

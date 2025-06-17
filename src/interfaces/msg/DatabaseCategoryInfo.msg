@@ -5,6 +5,7 @@ int32[] images_ids
 int32[] annotations_ids
 
 interactive_yolo_interfaces/Float32Tensor[] embeddings
+float64[] embeddings_scores_exponential
 interactive_yolo_interfaces/Float32Tensor zeroshot_embedding
 
 float64 embeddings_set_time

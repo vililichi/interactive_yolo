@@ -120,14 +120,18 @@ class DatabaseServices:
         
         return future.result()
 
-    def SetDatabaseCategoryEmbeddings(self, id:int, embeddings:List[torch.Tensor])->SetDatabaseCategoryEmbeddings.Response:
+    def SetDatabaseCategoryEmbeddings(self, id:int, embeddings:List[torch.Tensor], embeddings_scores_exponential:List[float] = None)->SetDatabaseCategoryEmbeddings.Response:
         
+        if embeddings_scores_exponential is not None:
+            embeddings_scores_exponential = [1.0 for x in range(len(embeddings))]
+
         if not self.client_SetDatabaseCategoryEmbeddings.wait_for_service(0.05):
             return None
         
         request = SetDatabaseCategoryEmbeddings.Request()
         request.id = id
         request.embeddings = [torchTensorToFloat32Tensor(embeddings[i]) for i in range(len(embeddings))]
+        request.embeddings_scores_exponential = embeddings_scores_exponential
 
         future = self.client_SetDatabaseCategoryEmbeddings.call_async(request)
 

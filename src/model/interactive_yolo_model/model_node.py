@@ -131,7 +131,7 @@ class ExplorationNode(Node):
 
     def _category_update_callback(self, msg:DatabaseUpdateNotifaction):
         if msg.type == DatabaseUpdateNotifaction.REGISTERED:
-            self.task_queue_category_embedding_generation.put(msg.id)
+            self.task_queue_category_embedding_generation.put(time.time())
 
     def _image_input_update_callback(self, msg:RosImage):
         with self.input_lock:
@@ -141,7 +141,7 @@ class ExplorationNode(Node):
     def _update_working_model(self):
         if( self.embeddings_generator.update() ):
             with self.embedding_generation_model_lock:
-                embeddings, alias_name_list, category_alias_to_name = self.embeddings_generator.get_embedding(fallback_model=self.embedding_generation_model)
+                embeddings, alias_name_list, category_alias_to_name, alias_score_exponent_list = self.embeddings_generator.get_embedding(fallback_model=self.embedding_generation_model)
 
             if len(embeddings) > 0:
 
@@ -157,6 +157,7 @@ class ExplorationNode(Node):
                     self.embeddings = embeddings
                     self.alias_name_list = alias_name_list
                     self.category_alias_to_name = category_alias_to_name
+                    self.alias_score_exponent_list = alias_score_exponent_list
 
     def _task_loop_annotation_embedding_generation(self):
         while True:
@@ -221,7 +222,7 @@ class ExplorationNode(Node):
             self.database_services.SetDatabaseAnnotationEmbedding(annotation_info.id, vpe, use_mask)
 
             # Ajout d'une tâche pour la génération de l'embedding de la catégorie
-            self.task_queue_category_embedding_generation.put(annotation_info.category_id)
+            self.task_queue_category_embedding_generation.put(time.time())
 
             print(" Annotation embedding generation finished")
 
@@ -230,91 +231,149 @@ class ExplorationNode(Node):
         while True:
 
             # get task
-            category_id:int = self.task_queue_category_embedding_generation.get()
-            if category_id is None:
+            update_request_time:float = self.task_queue_category_embedding_generation.get()
+
+            cat_info_list_request = self.database_services.GetAllDatabaseCategories()
+
+            if cat_info_list_request is None:
                 continue
-            print("Task loop for category embedding generation started for category id:", category_id)
+            
+            cat_info_list : List[DatabaseCategoryInfo] = cat_info_list_request.infos
 
-            # get category info
-            cat_info = self.database_services.GetDatabaseCategory(category_id).info
+            for cat_info in cat_info_list:
 
-            if cat_info is None:
-                print(" Service GetDatabaseCategoryByName non disponible")
-                continue
-            if cat_info.id == -1:
-                print(" Categorie ",category_id," non disponible")
-                continue
-            if cat_info.id != category_id:   
-                print(" Categorie ",cat_info.id," reçue au lieu de ",category_id)
-                continue
-
-            # check if category embedding is already generated
-            if cat_info.embeddings_set_time > cat_info.last_member_update_time:
-                print(" Category embedding already generated for category id:", cat_info.id)
-                continue
-
-            # text embedding
-            tpe = None
-            if cat_info.zeroshot_embedding is None:
-                with self.embedding_generation_model_lock:
-                    tpe = self.embedding_generation_model.get_text_pe([cat_info.name,]).cpu()
-                self.database_services.SetDatabaseCategoryZeroshotEmbedding(cat_info.id, tpe)                                                                                
-            elif cat_info.zeroshot_embedding_set_time < 0.1:
-                with self.embedding_generation_model_lock:
-                    tpe = self.embedding_generation_model.get_text_pe([cat_info.name,]).cpu()
-                self.database_services.SetDatabaseCategoryZeroshotEmbedding(cat_info.id, tpe)
-            else:
-                tpe = float32TensorToTorchTensor(cat_info.zeroshot_embedding)
-
-
-            # add visual embedding
-            e_clusters_list = [tpe,]
-            n_clusters_list = [1,]
-            for id in cat_info.annotations_ids:
-                annotation_info = self.database_services.GetDatabaseAnnotation(id).info
-
-                if annotation_info is None:
-                    print(" Service GetDatabaseAnnotation non disponible")
+                category_id = cat_info.id
+                if category_id == -1:
+                    print(" Categorie ",category_id," non disponible")
                     continue
 
-                if annotation_info.id == -1:
-                    print(" Annotation ",id," non disponible")
-                    continue
-
-                if annotation_info.id != id:
-                    print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
-                    continue
-
-                if annotation_info.embedding is None:
-                    continue
-
-                if len(annotation_info.embedding.shape) == 0:
-                    continue
+                print("Task loop for category embedding generation started for category id:", category_id)
                 
-                vpe = float32TensorToTorchTensor(annotation_info.embedding)
-                
-                best_error = self.category_embedding_max_clusterring_error
-                best_id = -1
-                for i in range(len(e_clusters_list)):
-                    error = torch.dist(e_clusters_list[i], vpe, p=2).item()
-                    if error < best_error:
-                        best_error = error
-                        best_id = i
-                
-                if best_id == -1:
-                    e_clusters_list.append(vpe)
-                    n_clusters_list.append(1)
+                if cat_info is None:
+                    print(" Service GetDatabaseCategoryByName non disponible")
+                    continue
+                if cat_info.id == -1:
+                    print(" Categorie ",category_id," non disponible")
+                    continue
+                if cat_info.id != category_id:   
+                    print(" Categorie ",cat_info.id," reçue au lieu de ",category_id)
+                    continue
+
+                # check if category embedding is already generated
+                if cat_info.embeddings_set_time > update_request_time:
+                    print(" Category embedding already generated for category id:", cat_info.id)
+                    continue
+
+                # text embedding
+                tpe = None
+                if cat_info.zeroshot_embedding is None:
+                    with self.embedding_generation_model_lock:
+                        tpe = self.embedding_generation_model.get_text_pe([cat_info.name,]).cpu()
+                    self.database_services.SetDatabaseCategoryZeroshotEmbedding(cat_info.id, tpe)                                                                                
+                elif cat_info.zeroshot_embedding_set_time < 0.1:
+                    with self.embedding_generation_model_lock:
+                        tpe = self.embedding_generation_model.get_text_pe([cat_info.name,]).cpu()
+                    self.database_services.SetDatabaseCategoryZeroshotEmbedding(cat_info.id, tpe)
                 else:
+                    tpe = float32TensorToTorchTensor(cat_info.zeroshot_embedding)
 
-                    old_n = n_clusters_list[best_id]
-                    new_n = old_n + 1
-                    n_clusters_list[best_id] = new_n
 
-                    e_clusters_list[best_id] = (e_clusters_list[best_id]*old_n + vpe) / new_n
+                # add visual embedding
+                e_clusters_list = [tpe,]
+                n_clusters_list = [1,]
+                anti_n_n_clusters_list = [1,]
+                for id in cat_info.annotations_ids:
+                    annotation_info = self.database_services.GetDatabaseAnnotation(id).info
 
-            # Envoie de l'embedding
-            self.database_services.SetDatabaseCategoryEmbeddings(cat_info.id, e_clusters_list)
-            self.check_model_update = True
+                    if annotation_info is None:
+                        print(" Service GetDatabaseAnnotation non disponible")
+                        continue
+
+                    if annotation_info.id == -1:
+                        print(" Annotation ",id," non disponible")
+                        continue
+
+                    if annotation_info.id != id:
+                        print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
+                        continue
+
+                    if annotation_info.embedding is None:
+                        continue
+
+                    if len(annotation_info.embedding.shape) == 0:
+                        continue
+                    
+                    vpe = float32TensorToTorchTensor(annotation_info.embedding)
+                    
+                    best_error = self.category_embedding_max_clusterring_error
+                    best_id = -1
+                    for i in range(len(e_clusters_list)):
+                        error = torch.dist(e_clusters_list[i], vpe, p=2).item()
+                        if error < best_error:
+                            best_error = error
+                            best_id = i
+                    
+                    if best_id == -1:
+                        e_clusters_list.append(vpe)
+                        n_clusters_list.append(1)
+                        anti_n_n_clusters_list.append(1)
+                    else:
+
+                        old_n = n_clusters_list[best_id]
+                        new_n = old_n + 1
+                        n_clusters_list[best_id] = new_n
+
+                        e_clusters_list[best_id] = (e_clusters_list[best_id]*old_n + vpe) / new_n
+
+                # Comparaison avec les autres objets
+
+                for alternative_cat_info in cat_info_list:
+
+                    if alternative_cat_info.id == cat_info.id:
+                        continue
+
+                    for id in alternative_cat_info.annotations_ids:
+                        annotation_info = self.database_services.GetDatabaseAnnotation(id).info
+
+                        if annotation_info is None:
+                            print(" Service GetDatabaseAnnotation non disponible")
+                            continue
+
+                        if annotation_info.id == -1:
+                            print(" Annotation ",id," non disponible")
+                            continue
+
+                        if annotation_info.id != id:
+                            print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
+                            continue
+
+                        if annotation_info.embedding is None:
+                            continue
+
+                        if len(annotation_info.embedding.shape) == 0:
+                            continue
+                        
+                        vpe = float32TensorToTorchTensor(annotation_info.embedding)
+                        
+                        best_error = self.category_embedding_max_clusterring_error
+                        best_id = -1
+                        for i in range(len(e_clusters_list)):
+                            error = torch.dist(e_clusters_list[i], vpe, p=2).item()
+                            if error < best_error:
+                                best_error = error
+                                best_id = i
+                        
+                        if best_id > -1:
+                            anti_n_n_clusters_list[best_id] += 1
+                
+                if cat_info_list_request is None:
+                    score_cluster_list = [1.0 for x in range(len(e_clusters_list))]
+                else:
+                    score_cluster_list = [ float(anti_n_n_clusters_list[i]) / float(n_clusters_list[i]) for i in range(len(e_clusters_list)) ]
+
+                # Envoie de l'embedding
+                self.database_services.SetDatabaseCategoryEmbeddings(cat_info.id, e_clusters_list, score_cluster_list)
+                self.check_model_update = True
 
             print(" Category embedding generation finished")
 
@@ -350,7 +409,7 @@ class ExplorationNode(Node):
 
                 # Check if zero shot embedding is generated
                 if cat_info.zeroshot_embedding_set_time < 0.1:
-                    self.task_queue_category_embedding_generation.put(cat_info.id)
+                    self.task_queue_category_embedding_generation.put(time.time())
 
                 # var to save if fusion is needed
                 embeddings_time = cat_info.embeddings_set_time
@@ -387,7 +446,7 @@ class ExplorationNode(Node):
                 
                 # ask embedding fusion if needed
                 if need_embedding_fusion:
-                    self.task_queue_category_embedding_generation.put(cat_info.id)
+                    self.task_queue_category_embedding_generation.put(time.time())
             
             if not personne_cat_exist:
                 self.database_services.RegisterDatabaseCategory("personne")
@@ -467,7 +526,7 @@ class ExplorationNode(Node):
                 mask = result.masks.data[i].to(dtype=torch.bool)
                 bboxes = boxe.xyxy[0]
                 class_name = self.category_alias_to_name[self.alias_name_list[int(boxe.cls.item())]]
-                confidence = boxe.conf.item()
+                confidence = boxe.conf.item() ** self.alias_score_exponent_list[int(boxe.cls.item())]
 
                 if class_name == "__NOTHING__":
                     confidence = confidence ** 3.0
@@ -573,6 +632,8 @@ class ExplorationNode(Node):
 
             # new object detection parameter
             new_object_detection_parameters = NewObjectDetectionParameters()
+            new_object_detection_parameters.min_mask_score = 0.7
+            new_object_detection_parameters.model_yolo_result_score_exponant = self.alias_score_exponent_list
 
             with self.sam_model_lock:
                 new_object_detection_parameters.model_sam_result = self.sam_model(img_to_process)[0]

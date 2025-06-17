@@ -1,4 +1,5 @@
 int32 id
 interactive_yolo_interfaces/Float32Tensor[] embeddings
+float64[] embeddings_scores_exponential
 ---
 bool success

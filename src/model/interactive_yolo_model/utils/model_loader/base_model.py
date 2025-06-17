@@ -73,11 +73,39 @@ def sam_model()->SAM:
 
     return SAM(sam_model_url)
 
+FAST_SAM_MODEL_NAME = "FastSAM-x"
+
 def fast_sam_model()->FastSAM:
-    sam_model_path = os.path.join(models_dir(), "FastSAM-x.pt")
+    engine_sam_model_path = os.path.join(models_dir(), FAST_SAM_MODEL_NAME + ".engine")
+    sam_model_path = os.path.join(models_dir(), FAST_SAM_MODEL_NAME + ".pt")
+    sam_model_url = "https://github.com/ultralytics/assets/releases/download/v8.3.0/FastSAM-x.pt"
+
+    if not os.path.exists(engine_sam_model_path):
+
+        if not os.path.exists(sam_model_path):
+            urlretrieve(sam_model_url, sam_model_path)
+
+        return FastSAM(sam_model_url)
+    
+    else:
+        return FastSAM(engine_sam_model_path)
+    
+def generate_fast_sam_engine_model(use_dla = False):
+    sam_model_path = os.path.join(models_dir(), FAST_SAM_MODEL_NAME + ".pt")
+    engine_sam_model_path = os.path.join(models_dir(), FAST_SAM_MODEL_NAME + ".engine")
+    engine_sam_model_generation_path = os.path.join("weights", FAST_SAM_MODEL_NAME + ".engine")
     sam_model_url = "https://github.com/ultralytics/assets/releases/download/v8.3.0/FastSAM-x.pt"
 
     if not os.path.exists(sam_model_path):
-        urlretrieve(sam_model_url, sam_model_path)
+            urlretrieve(sam_model_url, sam_model_path)
 
-    return FastSAM(sam_model_url)
+    model = FastSAM(sam_model_url)
+
+    if(use_dla):
+        model.export(format="engine", batch=1, device="dla:0", dynamic=True)
+    else:
+        model.export(format="engine", batch=1, device="0", dynamic=True)
+
+    os.replace(engine_sam_model_generation_path, engine_sam_model_path)
+
+    
