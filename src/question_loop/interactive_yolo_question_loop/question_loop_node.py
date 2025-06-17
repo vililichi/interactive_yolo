@@ -24,6 +24,7 @@ from PySide6.QtCore import QUrl
 from PySide6.QtMultimedia import QSoundEffect
 
 class QuestionLoopNode(Node):
+
     def __init__(self):
         super().__init__('demo_node')
 
@@ -47,7 +48,7 @@ class QuestionLoopNode(Node):
             qos_profile=qos_policy)
 
         self.capture_effect = QSoundEffect()
-        self.capture_effect.setSource(QUrl.fromLocalFile(os.path.join(os.path.dirname(__file__), 'sounds', 'capture.wav')))
+        self.capture_effect.setSource(QUrl.fromLocalFile(os.path.join(workspace_dir(),"src","question_loop","interactive_yolo_question_loop", 'sounds', 'capture.wav')))
         self.question_interface = interface_question()
         self.question_interface.set_capture_callback(self._capture_callback)
 
@@ -62,6 +63,17 @@ class QuestionLoopNode(Node):
         self.display_counter = 0
         self.annotated_img = None
 
+        self._person_score = 0.0
+        self._person_score_lock = Lock()
+
+    def register_best_person_score(self, score:float, alpha:float = 0.5):
+        with self._person_score_lock:
+            self._person_score = (self._person_score * alpha) + (score * (1.0 - alpha))
+
+    def person_score(self) -> float:
+        with self._person_score_lock:
+            return self._person_score
+    
     def display_raw_thread_loop(self):
 
         while True:
@@ -92,8 +104,14 @@ class QuestionLoopNode(Node):
         classes_names = dict()
         classes_threshold = dict()
         class_nbr = 0
+        best_person_score = 0.0
 
         for prediction in predictions:
+
+            if prediction.class_name == "personne":
+                if prediction.confidence > best_person_score:
+                    best_person_score = prediction.confidence
+        
             if prediction.class_name not in classes_names.keys():
                 classes_names[prediction.class_name] = class_nbr
                 class_nbr += 1
@@ -103,6 +121,8 @@ class QuestionLoopNode(Node):
                 classes_threshold[prediction.class_name] = threshold
             elif classes_threshold[prediction.class_name] < threshold:
                 classes_threshold[prediction.class_name] = threshold
+        
+        self.register_best_person_score(best_person_score)
         
         color_map_coef = 0.5
         if(class_nbr > 1):
@@ -139,12 +159,18 @@ class QuestionLoopNode(Node):
 
             with self.image_lock:
                 self.image = frame.copy()
+            
+            self.register_best_person_score(0.0, 0.99)
 
     def question_loop(self):
 
         while(True):
             print("question sleep")
             time.sleep(5.0)
+
+            if( self.person_score() < 0.5):
+                print("no person detected, skip question")
+                continue
 
             print("try get question")
             question_request_answer = self.database.GetDatabaseQuestion()
