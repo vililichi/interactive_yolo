@@ -10,6 +10,18 @@ def generate_launch_description():
             name='database'
         ),
         Node(
+            package='interactive_yolo_audio',
+            namespace='interactive_yolo',
+            executable='tts_node',
+            name='tts'
+        ),
+        Node(
+            package='interactive_yolo_audio',
+            namespace='interactive_yolo',
+            executable='stt_node',
+            name='stt'
+        ),
+        Node(
             package='interactive_yolo_model',
             namespace='interactive_yolo',
             executable='model_node',

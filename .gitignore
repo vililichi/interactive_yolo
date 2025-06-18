@@ -4,9 +4,11 @@ log/
 venv/
 models/
 weights/
+audio_sample/
 __pycache__/
 *.egg-info/
 .vscode/
+*.zip
 
 mobileclip_blt.pt
 mobileclip_blt.ts

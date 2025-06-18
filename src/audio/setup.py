@@ -25,7 +25,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'stt_node = interactive_yolo_audio.stt_node:main'
+            'stt_node = interactive_yolo_audio.stt_node:main',
+            'tts_node = interactive_yolo_audio.tts_node:main'
         ],
     },
 )

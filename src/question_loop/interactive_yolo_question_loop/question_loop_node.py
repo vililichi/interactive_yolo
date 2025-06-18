@@ -4,6 +4,7 @@ import rclpy
 from threading import Thread, Lock
 from rclpy.node import Node
 from interactive_yolo_utils import workspace_dir
+from speaklisten import SpeakListen
 
 from database_service.database_service import DatabaseServices
 from tensor_msg_conversion.tensor_msg_conversion import boolTensorToNdArray
@@ -40,6 +41,8 @@ class QuestionLoopNode(Node):
                                                 history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                                 depth=1)
         self.model_input_publisher = self.create_publisher(RosImage, 'interactive_yolo/model_input_image', qos_profile=qos_policy)
+
+        self.speak_listen = SpeakListen(self)
 
         self.sub_input_image = self.create_subscription(
             PredictionResult, 
@@ -226,7 +229,7 @@ class QuestionLoopNode(Node):
 
             print("ask question")
             start_ask_time = time.time()
-            category_name = self.question_interface.ask_question(img_bgr_mask, estimation_label)
+            category_name = self.question_interface.ask_question(img_bgr_mask, self.speak_listen, estimation_label)
             interaction_time = time.time() - start_ask_time
 
             print("solve question")
