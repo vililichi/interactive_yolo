@@ -453,9 +453,7 @@ class Database:
         with self._questions_lock:
             if( question_id in self.questions.keys()):
                 question = self.questions[question_id]
-                score = 1.0 #question.mask_confidence ** 0.5
-                #
-                
+                score = 1.0
 
                 emb_score = 1.0 
                 for solved_question in self.solved_questions.values():
@@ -466,7 +464,7 @@ class Database:
                     question_emb = float32TensorToNdarray(question.embedding)
                     solved_question_emb = float32TensorToNdarray(solved_question.question.embedding)
                     dist = np.linalg.norm(question_emb - solved_question_emb)
-                    sub_emb_score = 1.0 - (dist**0.33)
+                    sub_emb_score = 1.0 - (dist**3.0)
                     sub_emb_score -= time_offset
                     sub_emb_score = max(sub_emb_score, 0.0)
                     emb_score -= sub_emb_score
@@ -552,7 +550,7 @@ class Database:
 
             return self.questions[id]
 
-    def get_question(self)->DatabaseQuestionInfo:
+    def get_question(self)->Tuple[DatabaseQuestionInfo, float]:
         best_question_id = -1
         best_question_score = 0.0
         actual_time = time.time()
@@ -570,10 +568,10 @@ class Database:
                 best_question_id = key
 
         if best_question_id == -1:
-            return empty_question_info()
+            return empty_question_info(), best_question_score
         else:
             with self._questions_lock:
-                return self.questions[best_question_id]
+                return self.questions[best_question_id], best_question_score
 
     def _clean_question(self):
         

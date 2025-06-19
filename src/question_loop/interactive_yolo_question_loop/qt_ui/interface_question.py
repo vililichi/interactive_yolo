@@ -4,6 +4,7 @@ import time
 from .widget import QuestionWithImage, CaptureWidget
 from PySide6.QtWidgets import QApplication, QStackedWidget
 from PySide6 import QtCore
+from typing import Tuple
 
 from speaklisten import SpeakListen
 import yake
@@ -13,6 +14,7 @@ def extract_listen_answer(text:str):
     description_words = ["c'est", "est", "sont"]
     validation_words = ["validé", "valider", "validez", "valide", "confirmer", "confirmez", "confirmé"]
     annulation_words = ["annuler", "annulez", "annulé"]
+    determinant_words = ["un", "une", "le", "la", "des", "les"]
     
     description = False
     validation = False
@@ -66,6 +68,18 @@ def extract_listen_answer(text:str):
     
         if len(potential_object) > 0:
             object_name = potential_object[0]
+        else:
+            words = description_segment.split(" ")
+            object_name = ""
+
+            if len(words) > 1:
+                words = words[1:]
+
+                if len(words) > 1:
+                    if words[0] in determinant_words:
+                        words = words[1:]
+                
+                object_name = " ".join(words)
     
     return object_name, validation, annulation
 
@@ -119,7 +133,7 @@ class interface_question:
     def set_capture_callback(self, callback):
         self.capture_widget.setCaptureCallback(callback)
 
-    def ask_question(self, cv_image, speak_listen:SpeakListen, estimation_label = None)->str:
+    def ask_question(self, cv_image, speak_listen:SpeakListen, estimation_label = None)->Tuple[str, bool]:
 
         if estimation_label is not None:
             if estimation_label == "__NOTHING__":
@@ -141,6 +155,8 @@ class interface_question:
                 speak_listen.speak("Je crois que c'est "+estimation_label)
 
         help_time = time.time() + 30
+        repeat = False
+        success = True
         answer = None
         speak_listen.clear_listen_buffer()
         while True:
@@ -168,20 +184,31 @@ class interface_question:
                     answer = self.answer
                     if answer is None:
                         speak_listen.clear_speak_buffer()
+                        time.sleep(0.5)
                         speak_listen.speak("Objet invalidé")
                     else:
                         speak_listen.clear_speak_buffer()
+                        time.sleep(0.5)
                         speak_listen.speak("Objet validé, l'objet est "+answer)
                     break
                 elif time.time() > help_time:
-                    help_time = time.time() + 60
-                    speak_listen.speak(text="Quel est cet objet?")
-                    speak_listen.speak(text="Dites c'est un [nom de l'objet] pour donner le nom de l'objet")
-                    speak_listen.speak(text="Dites [valider] pour valider le nom de l'objet")
-                    speak_listen.speak(text="Dites [annuler] si ce n'est pas un objet")
+                    if repeat:
+                        success = False
+                        speak_listen.clear_speak_buffer()
+                        time.sleep(0.5)
+                        speak_listen.speak(text="Question annulée, il ne semble y avoir personne.")
+                        break
+                    else:
+                        help_time = time.time() + 60
+                        speak_listen.speak(text="Quel est cet objet?")
+                        speak_listen.speak(text="Dites c'est un [nom de l'objet] pour donner le nom de l'objet")
+                        speak_listen.speak(text="Dites [valider] pour valider le nom de l'objet")
+                        speak_listen.speak(text="Dites [annuler] si ce n'est pas un objet")
+                        repeat = True
+
 
             time.sleep(0.05)
 
         self.stacked_widget.setCurrentIndex(1)
 
-        return answer
+        return answer, success

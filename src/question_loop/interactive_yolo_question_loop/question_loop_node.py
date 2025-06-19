@@ -171,7 +171,7 @@ class QuestionLoopNode(Node):
             print("question sleep")
             time.sleep(5.0)
 
-            if( self.person_score() < 0.5):
+            if( self.person_score() < 0.2):
                 print("no person detected, skip question")
                 continue
 
@@ -182,7 +182,11 @@ class QuestionLoopNode(Node):
                 continue
 
             question_info: DatabaseQuestionInfo = question_request_answer.info
+            question_score: float = question_request_answer.score
             if question_info.id == -1:
+                continue
+
+            if question_score < 0.1:
                 continue
 
             image_id = question_info.image_id
@@ -228,12 +232,14 @@ class QuestionLoopNode(Node):
 
 
             print("ask question")
+            self.question_interface.question_widget.setQuestion("Quel est cet objet? score = "+str(question_score))
             start_ask_time = time.time()
-            category_name = self.question_interface.ask_question(img_bgr_mask, self.speak_listen, estimation_label)
+            category_name, success = self.question_interface.ask_question(img_bgr_mask, self.speak_listen, estimation_label)
             interaction_time = time.time() - start_ask_time
 
             print("solve question")
-            self.database.SolveDatabaseQuestion(question_info.id, category_name, interaction_time)
+            if success:
+                self.database.SolveDatabaseQuestion(question_info.id, category_name, interaction_time)
 
     def _capture_callback(self, cv_image_1, cv_image_2, use_img_2):
 

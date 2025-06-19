@@ -79,7 +79,7 @@ class AnnotationDatabaseNode(Node):
     def callback_GetDatabaseQuestion(self, request: GetDatabaseQuestion.Request, response: GetDatabaseQuestion.Response):
 
         print( "get_question_info[]" )
-        response.info = self.database.get_question()
+        response.info, response.score = self.database.get_question()
 
         print("done")
         return response

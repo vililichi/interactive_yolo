@@ -23,6 +23,9 @@ class TTSNode(rclpy.node.Node):
         self.audio_dict = dict()
 
         self.speak_queue = Queue()
+        self.new_speak_queue = Queue()
+        self.reset = False
+        self.reset_lock = Lock()
         self.stop = False
 
         self.speak_thread = Thread(target = self.speak_loop, daemon=True)
@@ -50,24 +53,40 @@ class TTSNode(rclpy.node.Node):
 
     def _sub_tts_reset_callback(self, msg:Bool):
             if msg.data:
-                self.speak_thread
-                self.speak_queue = Queue()
+                with self.reset_lock:
+                    self.reset = True
+                    self.new_speak_queue = Queue()
 
     def register_speak(self, text):
-        self.speak_queue.put(text)
+        with self.reset_lock:
+            if self.reset:
+                self.new_speak_queue.put(text)
+            else:
+                self.speak_queue.put(text)
 
     def speak_loop(self):
 
         while True:
 
             text = None
+
+            with self.reset_lock:
+                if self.reset:
+                    self.speak_queue = self.new_speak_queue
+                    self.reset = False
+                speak_queue = self.speak_queue
+
             try:
-                text = self.speak_queue.get(timeout=0.5)
+                text = speak_queue.get(timeout=0.5)
             except:
                 text = None
 
             if self.stop:
                 break
+
+            with self.reset_lock:
+                if self.reset:
+                    continue
 
             if text is None:
                 continue

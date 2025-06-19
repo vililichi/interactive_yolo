@@ -1,2 +1,3 @@
 ---
 interactive_yolo_interfaces/DatabaseQuestionInfo info
+float32 score
