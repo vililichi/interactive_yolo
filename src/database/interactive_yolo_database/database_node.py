@@ -251,16 +251,24 @@ class AnnotationDatabaseNode(Node):
         print("done")
         return response
 
+    def close(self):
+        self.database.close()
+
 def main(args=None):
-    rclpy.init()
-    executor = rclpy.executors.MultiThreadedExecutor(8)
+    
+    try:
+        rclpy.init()
+        executor = rclpy.executors.MultiThreadedExecutor(8)
 
-    node = AnnotationDatabaseNode()
-    executor.add_node(node)
-    print("Node ready")
+        node = AnnotationDatabaseNode()
+        executor.add_node(node)
+        print("Node ready")
 
-    executor.spin()
-    rclpy.shutdown()
+        executor.spin()
+        rclpy.shutdown()
+
+    finally:
+        node.close()
 
 if __name__ == '__main__':
     main()

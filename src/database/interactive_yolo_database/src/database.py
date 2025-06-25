@@ -158,6 +158,7 @@ class Database:
     " Fichier contenant les info sur les questions"
 
     def __init__(self):
+
         self.categories = dict()
         self._last_categories_id = -1
         self._categories_names_to_id = dict()
@@ -184,6 +185,8 @@ class Database:
         self._json_annotations_info_path    = os.path.join(self._data_path, "annotations.json")
         self._json_questions_info_path      = os.path.join(self._data_path, "questions.json")
 
+        self._stop = False
+        self._stop_finish = False
         self._need_save_annotation = False
         self._need_save_category = False
         self._need_save_image = False
@@ -220,7 +223,17 @@ class Database:
             if( need_save_question ):
                 self._save_questions_info()
 
-            time.sleep(20.0)
+            end_loop = False
+            for i in range(20):
+
+                time.sleep(1.0)
+                if (self._stop):
+                    end_loop = True
+                    break
+            if end_loop:
+                break
+
+        self._stop_finish = True
 
     def _generate_image_path(self, id:int)->str:
         filename = str(id).rjust(8,"0")+".png"
@@ -806,3 +819,9 @@ class Database:
                         msg = DatabaseSolvedQuestionInfo()
                         set_message_fields(msg, info)
                         self.solved_questions[int(key)] = msg
+
+    def close(self):
+        self._stop = True
+        while not self._stop_finish :
+            time.sleep(0.5)
+        return
