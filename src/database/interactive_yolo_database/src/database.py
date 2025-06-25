@@ -201,6 +201,13 @@ class Database:
     def _save_thread_function(self):
         while True:
 
+            end_loop = False
+            for i in range(20):
+                time.sleep(1.0)
+                if (self._stop):
+                    end_loop = True
+                    break
+
             with(self._need_save_lock):
                 need_save_annotation = self._need_save_annotation
                 need_save_category = self._need_save_category
@@ -223,17 +230,9 @@ class Database:
             if( need_save_question ):
                 self._save_questions_info()
 
-            end_loop = False
-            for i in range(20):
-
-                time.sleep(1.0)
-                if (self._stop):
-                    end_loop = True
-                    break
             if end_loop:
-                break
-
-        self._stop_finish = True
+                self._stop_finish = True
+                return
 
     def _generate_image_path(self, id:int)->str:
         filename = str(id).rjust(8,"0")+".png"
