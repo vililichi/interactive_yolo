@@ -35,7 +35,7 @@ class TaskNode(Node):
         self.embeddings_generator = EmbeddingGenerator(self.database_services)
         self.ref_model = base_model()
         self.trained_model = base_model()
-        self.trained_model_with_no_classes_specification = base_model()
+        self.trained_model = base_model()
 
         self.tool_dir = os.path.join(workspace_dir(), 'tools', 'evaluate_model')
         self.input_path = os.path.join(self.tool_dir, 'input')
@@ -210,14 +210,14 @@ class TaskNode(Node):
 
         # Load the model learning with all classes
         self.embeddings_generator.update()
-        embeddings, alias_name_list, category_alias_to_name, alias_score_exponent_list = self.embeddings_generator.get_embedding(categories_name=None, fallback_model=self.trained_model_with_no_classes_specification)
+        embeddings, alias_name_list, category_alias_to_name, alias_score_exponent_list = self.embeddings_generator.get_embedding(categories_name=label_str_list, fallback_model=self.trained_model)
         if len(embeddings) > 0:
-            self.trained_model_with_no_classes_specification.set_classes(alias_name_list, embeddings)
+            self.trained_model.set_classes(alias_name_list, embeddings)
 
         # Evaluate the model
         print("Evaluating model...")
 
-        trained_results = self.trained_model_with_no_classes_specification.predict(images, conf=0.01, verbose=False)
+        trained_results = self.trained_model.predict(images, conf=0.01, verbose=False)
         ref_results = self.ref_model.predict(images, conf=0.01, verbose=False)
 
         trained_preds = []
@@ -240,12 +240,12 @@ class TaskNode(Node):
             trained_conf_corrected = torch.clone(trained_conf)
             trained_conf_corrected = torch.tensor([ x.item() ** alias_score_exponent_list[int(trained_result.boxes.cls[j].item())] for j, x in enumerate(torch.unbind(trained_conf_corrected))])
 
-            valid_ids = [j for j in range(trained_labels_nbr) if trained_labels_names[j] in labels_to_id]
-            trained_labels_names = [trained_labels_names[j] for j in valid_ids]
-            trained_boxes = trained_boxes[valid_ids]
-            trained_masks = trained_masks[valid_ids]
-            trained_conf = trained_conf[valid_ids]
-            trained_conf_corrected = trained_conf_corrected[valid_ids]
+            # valid_ids = [j for j in range(trained_labels_nbr) if trained_labels_names[j] in labels_to_id]
+            # trained_labels_names = [trained_labels_names[j] for j in valid_ids]
+            # trained_boxes = trained_boxes[valid_ids]
+            # trained_masks = trained_masks[valid_ids]
+            # trained_conf = trained_conf[valid_ids]
+            # trained_conf_corrected = trained_conf_corrected[valid_ids]
             trained_labels_ids = [labels_to_id[name] for name in trained_labels_names]
             trained_labels_ids_tensor = torch.IntTensor(trained_labels_ids).cpu()
 
