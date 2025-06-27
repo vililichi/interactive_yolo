@@ -314,6 +314,14 @@ class Database:
                 self._need_save_image = True
 
             return image_info.id
+        
+    def open_image(self, id:int)->np.ndarray:
+        with self._images_lock:
+            try:
+                img = cv2.imread(self.images[id].path)
+                return img
+            except:
+                return None
 
     def _remove_image(self, image_id )->bool:
         with self._images_lock:

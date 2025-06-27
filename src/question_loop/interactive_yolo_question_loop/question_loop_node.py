@@ -193,15 +193,12 @@ class QuestionLoopNode(Node):
             if question_info.image_id == -1:
                 continue
 
-            image_request_answer = self.database.GetDatabaseImage(image_id)
+            image_request_answer = self.database.OpenDatabaseImage(image_id)
             if image_request_answer is None:
                 continue
             
-            image_info : DatabaseImageInfo = image_request_answer.info
-            if image_info.id != image_id:
-                continue
-
-            cv_image = cv2.imread(image_info.path)
+            image_msg = image_request_answer.image
+            cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg)
 
             mask = boolTensorToNdArray(question_info.mask)
 

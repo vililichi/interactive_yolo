@@ -186,19 +186,19 @@ class ExplorationNode(Node):
             bbox = [ annotation_info.bbox.x1, annotation_info.bbox.y1, annotation_info.bbox.x2, annotation_info.bbox.y2 ]
 
             # Récupération de l'image
-            img_info = self.database_services.GetDatabaseImage(annotation_info.image_id).info
+            img_request = self.database_services.OpenDatabaseImage(annotation_info.image_id)
             
-            if img_info is None:
-                print(" Service GetDatabaseImage non disponible")
+            if img_request is None:
+                print(" Service OpenDatabaseImage non disponible")
                 continue
 
-            if img_info.id == -1:
+            img_msg = img_request.image
+
+            if img_msg is None:
                 print(" Image ",annotation_info.image_id," non disponible")
                 continue
 
-            if img_info.id != annotation_info.image_id: 
-                print(" Image ",img_info.id," reçue au lieu de ",annotation_info.image_id)
-                continue
+            img_cv = self.cv_bridge.imgmsg_to_cv2(img_msg)
             
             # Génération de l'embedding
             visual_prompts = dict(
@@ -216,7 +216,7 @@ class ExplorationNode(Node):
                 use_mask = True
 
             with self.embedding_generation_model_lock:
-                vpe = self.embedding_generation_model.generate_vpe(refer_image=img_info.path, visual_prompts=visual_prompts, predictor=YOLOEVPSegPredictor, verbose=False)
+                vpe = self.embedding_generation_model.generate_vpe(refer_image=img_cv, visual_prompts=visual_prompts, predictor=YOLOEVPSegPredictor, verbose=False)
             
             # Envoie de l'embedding
             self.database_services.SetDatabaseAnnotationEmbedding(annotation_info.id, vpe, use_mask)

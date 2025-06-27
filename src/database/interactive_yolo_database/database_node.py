@@ -5,7 +5,7 @@ import rclpy.executors
 from rclpy.node import Node
 from interactive_yolo_interfaces.srv import GetDatabaseAnnotation, GetDatabaseCategory, GetDatabaseCategoryByName, GetDatabaseImage, GetDatabaseQuestion, GetAllDatabaseCategories
 from interactive_yolo_interfaces.srv import RegisterDatabaseAnnotation, RegisterDatabaseCategory, RegisterDatabaseImage, RegisterDatabaseQuestion
-from interactive_yolo_interfaces.srv import SetDatabaseAnnotationEmbedding, SetDatabaseAnnotationMask, SetDatabaseCategoryEmbeddings, SetDatabaseCategoryZeroshotEmbedding, SolveDatabaseQuestion
+from interactive_yolo_interfaces.srv import SetDatabaseAnnotationEmbedding, SetDatabaseAnnotationMask, SetDatabaseCategoryEmbeddings, SetDatabaseCategoryZeroshotEmbedding, SolveDatabaseQuestion, OpenImage
 from interactive_yolo_interfaces.msg import DatabaseUpdateNotifaction
 
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -42,7 +42,8 @@ class AnnotationDatabaseNode(Node):
         self.srv_SetDatabaseCategoryEmbeddings          = self.create_service(SetDatabaseCategoryEmbeddings         , 'interactive_yolo/set_database_category_embeddings'           , self.callback_SetDatabaseCategoryEmbeddings       , callback_group=self._callback_group)
         self.srv_SetDatabaseCategoryZeroshotEmbedding   = self.create_service(SetDatabaseCategoryZeroshotEmbedding  , 'interactive_yolo/set_database_category_zeroshot_embedding'   , self.callback_SetDatabaseCategoryZeroshotEmbedding, callback_group=self._callback_group)
 
-        self.srv_SolveDatabaseQuestion = self.create_service(SolveDatabaseQuestion, 'interactive_yolo/solve_database_question', self.callback_SolveDatabaseQuestion , callback_group=self._callback_group)
+        self.srv_SolveDatabaseQuestion  = self.create_service(SolveDatabaseQuestion, 'interactive_yolo/solve_database_question', self.callback_SolveDatabaseQuestion , callback_group=self._callback_group)
+        self.srv_OpenImage              = self.create_service(OpenImage, 'interactive_yolo/open_database_image', self.callback_OpenDatabase , callback_group=self._callback_group)
 
     def callback_GetDatabaseAnnotation(self, request: GetDatabaseAnnotation.Request, response: GetDatabaseAnnotation.Response):
 
@@ -247,6 +248,17 @@ class AnnotationDatabaseNode(Node):
             self.pub_annotation_update_notification.publish(notification)
 
         
+
+        print("done")
+        return response
+
+    def callback_OpenDatabase(self, request: OpenImage.Request, response: OpenImage.Response):
+        
+        print( "open_image[",request.id,"]" )
+
+        cv_img = self.database.open_image(request.id)
+        if cv_img is not None:
+            response.image = self.cv_bridge.cv2_to_imgmsg(cv_img)
 
         print("done")
         return response

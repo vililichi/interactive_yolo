@@ -37,6 +37,7 @@ rosidl_generate_interfaces(interactive_yolo_interfaces
   "srv/database/SetDatabaseCategoryZeroshotEmbedding.srv"
   "srv/database/RemoveDatabaseQuestion.srv"
   "srv/database/SolveDatabaseQuestion.srv"
+  "srv/database/OpenImage.srv"
   "srv/PonctualInference.srv"
   "action/UIAnnotation.action"
   DEPENDENCIES std_msgs sensor_msgs

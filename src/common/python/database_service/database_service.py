@@ -1,12 +1,10 @@
 from rclpy.node import Node
-from interactive_yolo_interfaces.msg import Float32Tensor, BoolTensor, Bbox
-from interactive_yolo_interfaces.srv import GetDatabaseCategoryByName, GetDatabaseCategory, GetDatabaseAnnotation, GetDatabaseImage, GetAllDatabaseCategories, SetDatabaseAnnotationEmbedding, SetDatabaseCategoryEmbeddings, SetDatabaseCategoryZeroshotEmbedding, RegisterDatabaseQuestion, RegisterDatabaseAnnotation, RegisterDatabaseCategory, RegisterDatabaseImage, GetDatabaseQuestion, SolveDatabaseQuestion, SetDatabaseAnnotationMask
+from interactive_yolo_interfaces.msg import Bbox
+from interactive_yolo_interfaces.srv import GetDatabaseCategoryByName, GetDatabaseCategory, GetDatabaseAnnotation, GetDatabaseImage, GetAllDatabaseCategories, SetDatabaseAnnotationEmbedding, SetDatabaseCategoryEmbeddings, SetDatabaseCategoryZeroshotEmbedding, RegisterDatabaseQuestion, RegisterDatabaseAnnotation, RegisterDatabaseCategory, RegisterDatabaseImage, GetDatabaseQuestion, SolveDatabaseQuestion, SetDatabaseAnnotationMask, OpenImage
 from tensor_msg_conversion import torchTensorToFloat32Tensor, torchTensorToBoolTensor
 import time
-import numpy as np
 import torch
 from typing import List
-from threading import Event
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 class DatabaseServices:
@@ -29,6 +27,7 @@ class DatabaseServices:
         self.client_GetDatabaseQuestion                     = node.create_client(GetDatabaseQuestion, 'interactive_yolo/get_database_question', callback_group=self._callback_group)
         self.client_SolveDatabaseQuestion                   = node.create_client(SolveDatabaseQuestion, 'interactive_yolo/solve_database_question', callback_group=self._callback_group)
         self.client_SetDatabaseAnnotationMask               = node.create_client(SetDatabaseAnnotationMask, 'interactive_yolo/set_database_annotation_mask', callback_group=self._callback_group)
+        self.client_OpenImage                               = node.create_client(OpenImage, 'interactive_yolo/open_database_image', callback_group=self._callback_group)
 
     def GetDatabaseCategory(self, id:int)->GetDatabaseCategory.Response:
         
@@ -282,3 +281,17 @@ class DatabaseServices:
         
         return future.result()
 
+    def OpenDatabaseImage(self, id : int ) -> OpenImage.Response:
+
+        if not self.client_OpenImage.wait_for_service(0.05):
+            return None
+        
+        request = OpenImage.Request()
+        request.id = id
+
+        future = self.client_OpenImage.call_async(request)
+
+        while(not future.done()):
+            time.sleep(0.005)
+        
+        return future.result()
