@@ -29,7 +29,10 @@ class QuestionLoopNode(Node):
     def __init__(self):
         super().__init__('demo_node')
         self.declare_parameter('image_sending_mode', 'raw')
+        self.declare_parameter('input_mode', 'pc')
+
         self.compressed_image = (self.get_parameter('image_sending_mode').value == 'compressed')
+        self.ttop_input = (self.get_parameter('input_mode').value == 'ttop')
 
         self.cv_bridge = CvBridge()
 
@@ -59,11 +62,15 @@ class QuestionLoopNode(Node):
         self.question_interface = interface_question()
         self.question_interface.set_capture_callback(self._capture_callback)
 
-        self.cam_thread = Thread(target=self.camera_thread_loop, daemon=True)
+        if self.ttop_input:
+            self.ttop_camera_input_subscriber = self.create_subscription( RosImage, 'interactive_yolo/ttop_camera_input', self._ttop_camera_input_callback, qos_profile=qos_policy)
+        else:
+            self.cam_thread = Thread(target=self.camera_thread_loop, daemon=True)
+            self.cam_thread.start()
+
         self.display_raw_thread = Thread(target=self.display_raw_thread_loop, daemon=True)
         self.question_loop_thread = Thread(target=self.question_loop, daemon=True)
 
-        self.cam_thread.start()
         self.display_raw_thread.start()
         self.question_loop_thread.start()
 
@@ -171,6 +178,11 @@ class QuestionLoopNode(Node):
                 self.image = frame.copy()
             
             self.register_best_person_score(0.0, 0.99)
+    
+    def _ttop_camera_input_callback(self, msg):
+        with self.image_lock:
+            self.image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
+        self.register_best_person_score(0.0, 0.99)
 
     def question_loop(self):
 
