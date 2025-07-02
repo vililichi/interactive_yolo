@@ -10,7 +10,7 @@ from database_service.database_service import DatabaseServices
 from tensor_msg_conversion.tensor_msg_conversion import boolTensorToNdArray
 from .qt_ui.interface_question import interface_question
 
-from sensor_msgs.msg import Image as RosImage
+from sensor_msgs.msg import Image as RosImage, CompressedImage as RosCompressedImage
 from interactive_yolo_interfaces.msg import DatabaseQuestionInfo, DatabaseImageInfo, Bbox, Prediction, PredictionResult
 
 import cv2
@@ -28,6 +28,8 @@ class QuestionLoopNode(Node):
 
     def __init__(self):
         super().__init__('demo_node')
+        self.declare_parameter('image_sending_mode', 'raw')
+        self.compressed_image = (self.get_parameter('image_sending_mode').value == 'compressed')
 
         self.cv_bridge = CvBridge()
 
@@ -40,7 +42,10 @@ class QuestionLoopNode(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                                 history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                                 depth=1)
-        self.model_input_publisher = self.create_publisher(RosImage, 'interactive_yolo/model_input_image', qos_profile=qos_policy)
+        if self.compressed_image:
+            self.model_input_publisher = self.create_publisher(RosCompressedImage, 'interactive_yolo/model_input_image_compressed', qos_profile=qos_policy)
+        else:
+            self.model_input_publisher = self.create_publisher(RosImage, 'interactive_yolo/model_input_image', qos_profile=qos_policy)
 
         self.speak_listen = SpeakListen(self)
 
@@ -87,9 +92,12 @@ class QuestionLoopNode(Node):
                     img = self.image.copy()
         
             if img is not None:
-
-                img_msg = self.cv_bridge.cv2_to_imgmsg(img, 'bgr8')
-                self.model_input_publisher.publish(img_msg)
+                if self.compressed_image:
+                    img_msg = self.cv_bridge.cv2_to_compressed_imgmsg(img, 'jpg')
+                    self.model_input_publisher.publish(img_msg)
+                else:
+                    img_msg = self.cv_bridge.cv2_to_imgmsg(img, 'bgr8')
+                    self.model_input_publisher.publish(img_msg)
 
                 self.question_interface.set_capture_image_brute(img)
             
