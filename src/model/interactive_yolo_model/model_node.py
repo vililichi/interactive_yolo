@@ -11,7 +11,7 @@ from typing import List, Tuple, Any, Dict, Union
 from threading import Thread, Lock
 from queue import Queue
 from interactive_yolo_interfaces.msg import DatabaseUpdateNotifaction, DatabaseCategoryInfo, PredictionResult, Prediction, Bbox
-from sensor_msgs.msg import Image as RosImage
+from sensor_msgs.msg import Image as RosImage, CompressedImage as RosCompressedImage
 
 import rclpy
 from rclpy.node import Node
@@ -109,6 +109,12 @@ class ExplorationNode(Node):
             'interactive_yolo/model_input_image',
             self._image_input_update_callback,
             qos_profile=qos_policy)
+        
+        self.sub_input_compressed_image = self.create_subscription(
+            RosCompressedImage,
+            'interactive_yolo/model_input_image_compressed',
+            self._image_compressed_input_update_callback,
+            qos_profile=qos_policy)
 
         self.pub_debug_img_raw = self.create_publisher(RosImage, 'interactive_yolo/new_object_detection_debug_raw', qos_profile=qos_policy)
         self.pub_debug_img_sam = self.create_publisher(RosImage, 'interactive_yolo/new_object_detection_debug_sam', qos_profile=qos_policy)
@@ -136,6 +142,11 @@ class ExplorationNode(Node):
     def _image_input_update_callback(self, msg:RosImage):
         with self.input_lock:
             self.input_image = self.cv_bridge.imgmsg_to_cv2(msg, 'bgr8')
+            self.input_update_time = time.time()
+    
+    def _image_compressed_input_update_callback(self, msg:RosCompressedImage):
+        with self.input_lock:
+            self.input_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
             self.input_update_time = time.time()
 
     def _update_working_model(self):
