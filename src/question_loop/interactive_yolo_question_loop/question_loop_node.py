@@ -249,7 +249,7 @@ class QuestionLoopNode(Node):
                 y1 = min(y1-100, 0)
                 y2 = min(y2+100, img_bgr_mask.shape[0]-1)
                 x1 = min(x1-100, 0)
-                x2 = min(x2+100, img_bgr_mask.shape[100, 0]-1)
+                x2 = min(x2+100, img_bgr_mask.shape[1]-1)
 
                 img_bgr_mask = img_bgr_mask[y1:y2, x1:x2]
 
