@@ -2,8 +2,8 @@ from threading import Lock, Thread
 import time
 
 from .widget import QuestionWithImage, CaptureWidget
-from PySide6.QtWidgets import QApplication, QStackedWidget
-from PySide6 import QtCore
+from PyQt5.QtWidgets import QApplication, QStackedWidget
+from PyQt5 import QtCore
 from typing import Tuple
 
 from speaklisten import SpeakListen

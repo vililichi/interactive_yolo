@@ -20,9 +20,9 @@ import os
 import numpy as np
 
 import sys
-from PySide6 import QtWidgets
-from PySide6.QtCore import QUrl
-from PySide6.QtMultimedia import QSoundEffect
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QUrl
+from playsound import playsound
 
 class QuestionLoopNode(Node):
 
@@ -55,8 +55,7 @@ class QuestionLoopNode(Node):
             self._model_output_update_callback,
             qos_profile=qos_policy)
 
-        self.capture_effect = QSoundEffect()
-        self.capture_effect.setSource(QUrl.fromLocalFile(os.path.join(workspace_dir(),"src","question_loop","interactive_yolo_question_loop", 'sounds', 'capture.wav')))
+        self.capture_sound_file = os.path.join(workspace_dir(),"src","question_loop","interactive_yolo_question_loop", 'sounds', 'capture.wav')
         self.question_interface = interface_question()
         self.question_interface.set_capture_callback(self._capture_callback)
 
@@ -260,9 +259,7 @@ class QuestionLoopNode(Node):
         save_path = os.path.join(folder, filename)
         cv2.imwrite(save_path, image_to_save)
 
-        self.capture_effect.setLoopCount(1)
-        self.capture_effect.setVolume(0.5)
-        self.capture_effect.play()
+        playsound(self.capture_sound_file, block=False)
 
 def main(args=None):
     app = QtWidgets.QApplication([])

@@ -1,6 +1,6 @@
-from PySide6 import QtWidgets
-from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt
+from PyQt5 import QtWidgets
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt
 import cv2
 import numpy as np
 
