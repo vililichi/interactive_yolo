@@ -23,7 +23,7 @@ def generate_launch_description():
                   {"image_height": 720},
               ],
               remappings=[
-                  ("cv_camera_node/image_raw", "interactive_yolo/ttop_camera_input"),
+                  ("image_raw", "interactive_yolo/ttop_camera_input"),
               ]
         )
     ])
