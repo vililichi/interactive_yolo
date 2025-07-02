@@ -15,8 +15,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*')))
     ],
     install_requires=[
-        'setuptools',
-        'PySide6'
+        'setuptools'
     ],
     zip_safe=True,
     maintainer='vililichi',
