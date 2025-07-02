@@ -9,7 +9,8 @@ def generate_launch_description():
             name='question_loop',
             parameters=[
                 {'image_sending_mode': 'compressed'},
-                {'input_mode':'ttop'}
+                {'input_mode':'ttop'},
+                {'rescale_question' : True}
             ]
         ),
         Node(

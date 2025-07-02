@@ -31,6 +31,11 @@ def generate_launch_description():
             package='interactive_yolo_question_loop',
             namespace='interactive_yolo',
             executable='question_loop_node',
-            name='question_loop'
+            name='question_loop',
+            parameters=[
+                {'image_sending_mode': 'raw'},
+                {'input_mode':'pc'},
+                {'rescale_question' : True}
+            ]
         ),
     ])

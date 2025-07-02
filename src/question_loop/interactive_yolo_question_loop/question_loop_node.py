@@ -30,9 +30,11 @@ class QuestionLoopNode(Node):
         super().__init__('demo_node')
         self.declare_parameter('image_sending_mode', 'raw')
         self.declare_parameter('input_mode', 'pc')
+        self.declare_parameter('rescale_question', False)
 
         self.compressed_image = (self.get_parameter('image_sending_mode').value == 'compressed')
         self.ttop_input = (self.get_parameter('input_mode').value == 'ttop')
+        self.rescale_question = self.get_parameter('rescale_question').value
 
         self.cv_bridge = CvBridge()
 
@@ -240,18 +242,18 @@ class QuestionLoopNode(Node):
             img_bgr_mask[mask] = cv_image[mask]
 
             # get mask bbox
-            if self.ttop_input:
+            if self.rescale_question:
                 xs = np.any(mask, axis=1)
                 ys = np.any(mask, axis=0)
                 y1, y2 = np.where(ys)[0][[0, -1]]
                 x1, x2 = np.where(xs)[0][[0, -1]]
 
-                y1 = min(y1-100, 0)
-                y2 = min(y2+100, img_bgr_mask.shape[0]-1)
-                x1 = min(x1-100, 0)
-                x2 = min(x2+100, img_bgr_mask.shape[1]-1)
+                y1 = max(y1-100, 0)
+                y2 = min(y2+100, img_bgr_mask.shape[1]-1)
+                x1 = max(x1-100, 0)
+                x2 = min(x2+100, img_bgr_mask.shape[0]-1)
 
-                img_bgr_mask = img_bgr_mask[y1:y2, x1:x2]
+                img_bgr_mask = img_bgr_mask[x1:x2, y1:y2, :]
 
             estimation_label = None
             if question_info.estimation_category_id >= 0:
