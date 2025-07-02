@@ -19,7 +19,7 @@ def generate_launch_description():
               executable='cv_camera_node',
               name='cv_camera_node',
               parameters=[
-                  {"rate": 15},
+                  {"rate": 15.0},
                   {"device_path": "/dev/camera_2d_wide"},
                   {"image_width": 1280},
                   {"image_height": 720},
