@@ -169,7 +169,7 @@ class ScaledImage(QtWidgets.QWidget):
         self._layout.addWidget(self._image_label)
         self.setLayout(self._layout)
 
-        self._img_size = 0.9
+        self._img_size = 0.85
 
     def _convert_cv_qt(self, cv_img, size:float=0.75):
         """Convert from an opencv image to QPixmap"""

@@ -239,6 +239,20 @@ class QuestionLoopNode(Node):
             cv2.drawContours(img_bgr_mask, contours, -1, color_a, 3)
             img_bgr_mask[mask] = cv_image[mask]
 
+            # get mask bbox
+            if self.ttop_input:
+                xs = np.any(mask, axis=1)
+                ys = np.any(mask, axis=0)
+                y1, y2 = np.where(ys)[0][[0, -1]]
+                x1, x2 = np.where(xs)[0][[0, -1]]
+
+                y1 = min(y1-100, 0)
+                y2 = min(y2+100, img_bgr_mask.shape[0]-1)
+                x1 = min(x1-100, 0)
+                x2 = min(x2+100, img_bgr_mask.shape[100, 0]-1)
+
+                img_bgr_mask = img_bgr_mask[y1:y2, x1:x2]
+
             estimation_label = None
             if question_info.estimation_category_id >= 0:
                 estimation_category_response = self.database.GetDatabaseCategory(question_info.estimation_category_id)
