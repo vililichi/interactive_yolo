@@ -5,7 +5,6 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='interactive_yolo_question_loop',
-            namespace='interactive_yolo',
             executable='question_loop_node',
             name='question_loop',
             parameters=[
@@ -15,7 +14,6 @@ def generate_launch_description():
         ),
         Node(
               package="cv_camera",
-              namespace='interactive_yolo',
               executable='cv_camera_node',
               name='cv_camera_node',
               parameters=[
