@@ -1,27 +1,11 @@
 <launch>
 
-    <!-- Base robot -->
-    <include file="$(find-pkg-share t_top)/launch/bringup.launch.xml">
-        <!-- Speech to text and text to speech -->
-        <arg name="language" value="fr"/>
-        <arg name="gender" value="female"/>
-        <arg name="voice_generator_type" value="piper"/>
-        <arg name="whisper_model" value="small"/>
-        <!-- Camera-->
-        <arg name="camera_2d_wide_enabled" value="true"/>
-        <!-- Disable other -->
-        <arg name="video_analyzer_3d_face_descriptor_enabled" default="false"/>
-        <arg name="video_analyzer_3d_pose_enabled" default="false"/>
-        <arg name="video_analyzer_3d_face_descriptor_enabled" default="false"/>
-        <arg name="open_browser" value="false"/>
-    </include>
-
     <!-- Question loop -->
-    <node pkg="interactive_yolo_question_loop" exec="question_loop_node.py" name="question_loop_node">
+    <node pkg="interactive_yolo_question_loop" exec="question_loop_node" name="question_loop_node" output="screen">
         <param name="image_sending_mode" value="compressed"/>
         <param name="input_mode" value="ttop"/>
         <param name="rescale_question" value="true"/>
-        <remap from="interactive_yolo/ttop_camera_input" to="camera_2d_wide_full_hd/image"/>
+        <remap from="interactive_yolo/ttop_camera_input" to="/camera_2d_wide/image_rect"/>
     </node>
 
 </launch>

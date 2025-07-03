@@ -22,7 +22,12 @@ import numpy as np
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QUrl
-from playsound import playsound
+
+playsoud_available = True
+try:
+    from playsound import playsound
+except:
+    playsoud_available = False
 
 class QuestionLoopNode(Node):
 
@@ -287,7 +292,8 @@ class QuestionLoopNode(Node):
         save_path = os.path.join(folder, filename)
         cv2.imwrite(save_path, image_to_save)
 
-        playsound(self.capture_sound_file, block=False)
+        if playsoud_available:
+            playsound(self.capture_sound_file, block=False)
 
 def main(args=None):
     app = QtWidgets.QApplication([])
