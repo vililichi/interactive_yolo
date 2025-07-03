@@ -2,7 +2,7 @@
 
     <!-- Question loop -->
     <node pkg="interactive_yolo_question_loop" exec="question_loop_node" name="question_loop_node" output="screen">
-        <param name="image_sending_mode" value="compressed"/>
+        <param name="image_sending_mode" value="none"/>
         <param name="input_mode" value="ttop"/>
         <param name="rescale_question" value="true"/>
         <remap from="interactive_yolo/ttop_camera_input" to="/camera_2d_wide/image_rect"/>

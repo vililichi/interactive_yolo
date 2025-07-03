@@ -37,6 +37,7 @@ class QuestionLoopNode(Node):
         self.declare_parameter('input_mode', 'pc')
         self.declare_parameter('rescale_question', False)
 
+        self.send_image = not (self.get_parameter('image_sending_mode').value == 'none')
         self.compressed_image = (self.get_parameter('image_sending_mode').value == 'compressed')
         self.ttop_input = (self.get_parameter('input_mode').value == 'ttop')
         self.rescale_question = self.get_parameter('rescale_question').value
@@ -105,12 +106,13 @@ class QuestionLoopNode(Node):
                     img = self.image.copy()
         
             if img is not None:
-                if self.compressed_image:
-                    img_msg = self.cv_bridge.cv2_to_compressed_imgmsg(img, 'jpg')
-                    self.model_input_publisher.publish(img_msg)
-                else:
-                    img_msg = self.cv_bridge.cv2_to_imgmsg(img, 'bgr8')
-                    self.model_input_publisher.publish(img_msg)
+                if self.send_image:
+                    if self.compressed_image:
+                        img_msg = self.cv_bridge.cv2_to_compressed_imgmsg(img, 'jpg')
+                        self.model_input_publisher.publish(img_msg)
+                    else:
+                        img_msg = self.cv_bridge.cv2_to_imgmsg(img, 'bgr8')
+                        self.model_input_publisher.publish(img_msg)
 
                 self.question_interface.set_capture_image_brute(img)
             
