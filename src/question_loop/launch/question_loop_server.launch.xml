@@ -1,0 +1,10 @@
+<launch>
+
+    <!-- Database -->
+    <node pkg="interactive_yolo_database" exec="database_node" name="database"/>
+    <!-- Model -->
+    <node pkg="interactive_yolo_model" exec="model_node" name="model" output="screen">
+        <remap from='interactive_yolo/model_input_image_compressed' to="/image_rect/compressed"/>
+    </node>
+
+</launch>
