@@ -103,6 +103,7 @@ class QuestionLoopNode(Node):
 
         if self.ttop_input:
             self.ttop_camera_input_subscriber = self.create_subscription( RosImage, 'interactive_yolo/ttop_camera_input', self._ttop_camera_input_callback, qos_profile=qos_policy)
+            self.ttop_camera_input_subscriber = self.create_subscription( RosCompressedImage, 'interactive_yolo/ttop_camera_input_compressed', self._ttop_compressed_camera_input_callback, qos_profile=qos_policy)
         else:
             self.cam_thread = Thread(target=self.camera_thread_loop, daemon=True)
             self.cam_thread.start()
@@ -225,6 +226,14 @@ class QuestionLoopNode(Node):
             
             self.register_best_person_score(0.0, 0.99)
             self.img_cb_hz.tic()
+
+    def _ttop_compressed_camera_input_callback(self, msg):
+
+        cv_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
+        with self.image_lock:
+            self.image = cv_image
+        self.register_best_person_score(0.0, 0.99)
+        self.img_cb_hz.tic()
     
     def _ttop_camera_input_callback(self, msg):
 

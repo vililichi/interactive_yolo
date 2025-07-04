@@ -5,7 +5,7 @@
         <param name="image_sending_mode" value="none"/>
         <param name="input_mode" value="ttop"/>
         <param name="rescale_question" value="true"/>
-        <remap from="interactive_yolo/ttop_camera_input" to='interactive_yolo/image_rect'/>
+        <remap from='interactive_yolo/ttop_camera_input_compressed' to='interactive_yolo/image_rect/compressed'/>
     </node>
 
 </launch>

@@ -2,7 +2,7 @@
 
     <!-- Image Rectifier -->
     <node pkg="interactive_yolo_image" exec="rectifier_node" name="rectifier_node" output="screen">
-        <remap from="interactive_yolo/rect_camera_raw" to="/camera_2d_wide_full_hd/image"/>
+        <remap from="interactive_yolo/rect_camera_compressed" to="/camera_2d_wide_full_hd/image/compressed"/>
         <remap from="interactive_yolo/rect_camera_info" to="camera_2d_wide_full_hd/camera_info"/>
     </node>
     <!-- Database -->

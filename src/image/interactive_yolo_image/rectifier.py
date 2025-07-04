@@ -18,9 +18,10 @@ class RectifierNode(Node):
 
         # Setup model
         self.pub = self.create_publisher(Image, 'interactive_yolo/image_rect', qos_profile=qos_policy)
-        self.pub_compressed = self.create_publisher(Image, 'interactive_yolo/image_rect/compressed', qos_profile=qos_policy)
+        self.pub_compressed = self.create_publisher(CompressedImage, 'interactive_yolo/image_rect/compressed', qos_profile=qos_policy)
 
         self.ttop_camera_raw_subscriber = self.create_subscription( Image, 'interactive_yolo/rect_camera_raw', self.rect_camera_raw_cb, qos_profile=qos_policy)
+        self.ttop_camera_raw_subscriber = self.create_subscription( CompressedImage, 'interactive_yolo/rect_camera_compressed', self.rect_camera_compressed_cb, qos_profile=qos_policy)
         self.ttop_camera_info_subscriber = self.create_subscription( CameraInfo, 'interactive_yolo/rect_camera_info', self.rect_camera_info_cb, qos_profile=qos_policy)
 
     def rect_camera_raw_cb(self, msg:Image):
@@ -30,6 +31,14 @@ class RectifierNode(Node):
             cv_image = cv2.remap(cv_image, self.mapx, self.mapy, cv2.INTER_LINEAR)
             self.pub.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
             self.pub_compressed.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+
+    def rect_camera_compressed_cb(self, msg:CompressedImage):
+
+        cv_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
+        if( self.mapx is not None and self.mapy is not None ):
+            cv_image = cv2.remap(cv_image, self.mapx, self.mapy, cv2.INTER_LINEAR)
+            self.pub.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+            self.pub_compressed.publish(self.cv_bridge.cv2_to_compressed_imgmsg(cv_image, "jpg"))
 
     def rect_camera_info_cb(self, msg:CameraInfo):
 
