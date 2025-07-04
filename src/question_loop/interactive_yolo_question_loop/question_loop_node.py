@@ -29,6 +29,28 @@ try:
 except:
     playsoud_available = False
 
+class FreqMonitor:
+    def __init__(self, name:str, display_time:float, logger, verbose = False):
+        self.logger = logger
+        self.itt = 0
+        self.name = name
+        self.display_time = display_time
+        self.start_time = time.time()
+        self.verbose = verbose
+        self.frequency = 0
+    
+    def tic(self):
+        self.itt += 1
+        now = time.time()
+        delta_t = now - self.start_time
+        if delta_t > self.display_time:
+            self.frequency = self.itt / delta_t
+            if self.verbose:
+                self.logger.info(f'{self.name}: {self.frequency:.2f} Hz')
+            self.itt = 0
+            self.start_time = now
+
+
 class QuestionLoopNode(Node):
 
     def __init__(self):
@@ -42,7 +64,16 @@ class QuestionLoopNode(Node):
         self.ttop_input = (self.get_parameter('input_mode').value == 'ttop')
         self.rescale_question = self.get_parameter('rescale_question').value
 
+        self.get_logger().info(f'send_image: {self.send_image}')
+        self.get_logger().info(f'compressed_image: {self.compressed_image}')
+        self.get_logger().info(f'ttop_input: {self.ttop_input}')
+        self.get_logger().info(f'rescale_question: {self.rescale_question}')
+
         self.cv_bridge = CvBridge()
+
+        self.img_cb_hz = FreqMonitor('img_cb', 10.0, self.get_logger(), verbose = True)
+        self.ui_img_set_hz = FreqMonitor('ui_img_set', 10.0, self.get_logger(), verbose = True)
+        self.ann_cb_hz = FreqMonitor('ann_cb', 10.0, self.get_logger(), verbose = True)
 
         self.image_lock = Lock()
         self.image = None
@@ -97,13 +128,15 @@ class QuestionLoopNode(Node):
             return self._person_score
     
     def display_raw_thread_loop(self):
-
+        delay_between_refresh = 1/60.0
         while True:
+            strt_time = time.time()
 
             img = None
             with self.image_lock:
                 if self.image is not None:
                     img = self.image.copy()
+                    self.image = None
         
             if img is not None:
                 if self.send_image:
@@ -116,7 +149,10 @@ class QuestionLoopNode(Node):
 
                 self.question_interface.set_capture_image_brute(img)
             
-            time.sleep(0.1)
+            
+            itt_time = time.time() - strt_time
+            time.sleep(max(0, delay_between_refresh - itt_time))
+            self.ui_img_set_hz.tic()
 
     def _model_output_update_callback(self, msg: PredictionResult):
                 
@@ -170,6 +206,7 @@ class QuestionLoopNode(Node):
             img = cv2.putText(img, label, (int(prediction.bbox.x1), int(prediction.bbox.y1 + 22)), font, fontScale, color.tolist(), fontThickness, cv2.LINE_AA)
 
         self.question_interface.set_capture_image_annotee(img)
+        self.ann_cb_hz.tic()
 
     def camera_thread_loop(self):
         cap = cv2.VideoCapture(0)
@@ -187,11 +224,15 @@ class QuestionLoopNode(Node):
                 self.image = frame.copy()
             
             self.register_best_person_score(0.0, 0.99)
+            self.img_cb_hz.tic()
     
     def _ttop_camera_input_callback(self, msg):
+
+        cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
         with self.image_lock:
-            self.image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.image = cv_image
         self.register_best_person_score(0.0, 0.99)
+        self.img_cb_hz.tic()
 
     def question_loop(self):
 
