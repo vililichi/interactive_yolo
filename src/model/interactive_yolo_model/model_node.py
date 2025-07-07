@@ -28,10 +28,37 @@ from queue import PriorityQueue
 
 import cv2
 
+
+class FreqMonitor:
+    def __init__(self, name:str, display_time:float, logger, verbose = False):
+        self.logger = logger
+        self.itt = 0
+        self.name = name
+        self.display_time = display_time
+        self.start_time = time.time()
+        self.verbose = verbose
+        self.frequency = 0
+    
+    def tic(self):
+        self.itt += 1
+        now = time.time()
+        delta_t = now - self.start_time
+        if delta_t > self.display_time:
+            self.frequency = self.itt / delta_t
+            if self.verbose:
+                self.logger.info(f'{self.name}: {self.frequency:.2f} Hz')
+            self.itt = 0
+            self.start_time = now
+
+
 class ExplorationNode(Node):
 
     def __init__(self):
         super().__init__('learning_node')
+
+        # Freq monito
+        self.img_cb_hz = FreqMonitor('img_cb', 10.0, self.get_logger(), verbose = True)
+        self.ann_cb_hz = FreqMonitor('ann_cb', 10.0, self.get_logger(), verbose = True)
 
         # models
         self.embedding_generation_model = base_model()
@@ -143,11 +170,13 @@ class ExplorationNode(Node):
         with self.input_lock:
             self.input_image = self.cv_bridge.imgmsg_to_cv2(msg, 'bgr8')
             self.input_update_time = time.time()
+        self.img_cb_hz.tic()
     
     def _image_compressed_input_update_callback(self, msg:RosCompressedImage):
         with self.input_lock:
             self.input_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, 'bgr8')
             self.input_update_time = time.time()
+        self.img_cb_hz.tic()
 
     def _update_working_model(self):
         if( self.embeddings_generator.update() ):
@@ -177,21 +206,21 @@ class ExplorationNode(Node):
             annotation_id:int = self.task_queue_annotation_embedding_generation.get()
             if annotation_id is None:
                 continue
-            print("Task loop for annotation embedding generation started for annotation id:", annotation_id)
+            self.get_logger().info("Task loop for annotation embedding generation started for annotation id:"+str( annotation_id))
 
             # Récupération de l'annotation
             annotation_info = self.database_services.GetDatabaseAnnotation(annotation_id).info
 
             if annotation_info is None:
-                print(" Service GetDatabaseAnnotation non disponible")
+                self.get_logger().info(" Service GetDatabaseAnnotation non disponible")
                 continue
 
             if annotation_info.id == -1:
-                print(" Annotation ",annotation_id," non disponible")
+                self.get_logger().info(" Annotation "+str(annotation_id)+" non disponible")
                 continue
             
             if annotation_info.id != annotation_id:
-                print(" Annotation ",annotation_info.id," reçue au lieu de ",annotation_id)
+                self.get_logger().info(" Annotation "+str(annotation_info.id)+" reçue au lieu de "+str(annotation_id))
                 continue
 
             bbox = [ annotation_info.bbox.x1, annotation_info.bbox.y1, annotation_info.bbox.x2, annotation_info.bbox.y2 ]
@@ -200,13 +229,13 @@ class ExplorationNode(Node):
             img_request = self.database_services.OpenDatabaseImage(annotation_info.image_id)
             
             if img_request is None:
-                print(" Service OpenDatabaseImage non disponible")
+                self.get_logger().info(" Service OpenDatabaseImage non disponible")
                 continue
 
             img_msg = img_request.image
 
             if img_msg is None:
-                print(" Image ",annotation_info.image_id," non disponible")
+                self.get_logger().info(" Image "+str(annotation_info.image_id)+" non disponible")
                 continue
 
             img_cv = self.cv_bridge.imgmsg_to_cv2(img_msg)
@@ -235,7 +264,7 @@ class ExplorationNode(Node):
             # Ajout d'une tâche pour la génération de l'embedding de la catégorie
             self.task_queue_category_embedding_generation.put(time.time())
 
-            print(" Annotation embedding generation finished")
+            self.get_logger().info(" Annotation embedding generation finished")
 
     def _task_loop_category_embedding_generation(self):
 
@@ -255,24 +284,24 @@ class ExplorationNode(Node):
 
                 category_id = cat_info.id
                 if category_id == -1:
-                    print(" Categorie ",category_id," non disponible")
+                    self.get_logger().info(" Categorie "+str(category_id)+" non disponible")
                     continue
 
-                print("Task loop for category embedding generation started for category id:", category_id)
+                self.get_logger().info("Task loop for category embedding generation started for category id:"+ str(category_id))
                 
                 if cat_info is None:
-                    print(" Service GetDatabaseCategoryByName non disponible")
+                    self.get_logger().info(" Service GetDatabaseCategoryByName non disponible")
                     continue
                 if cat_info.id == -1:
-                    print(" Categorie ",category_id," non disponible")
+                    self.get_logger().info(" Categorie "+str(category_id)+" non disponible")
                     continue
                 if cat_info.id != category_id:   
-                    print(" Categorie ",cat_info.id," reçue au lieu de ",category_id)
+                    self.get_logger().info(" Categorie "+str(cat_info.id)+" reçue au lieu de "+str(category_id))
                     continue
 
                 # check if category embedding is already generated
                 if cat_info.embeddings_set_time > update_request_time:
-                    print(" Category embedding already generated for category id:", cat_info.id)
+                    self.get_logger().info(" Category embedding already generated for category id:"+str(cat_info.id))
                     continue
 
                 # text embedding
@@ -297,15 +326,15 @@ class ExplorationNode(Node):
                     annotation_info = self.database_services.GetDatabaseAnnotation(id).info
 
                     if annotation_info is None:
-                        print(" Service GetDatabaseAnnotation non disponible")
+                        self.get_logger().info(" Service GetDatabaseAnnotation non disponible")
                         continue
 
                     if annotation_info.id == -1:
-                        print(" Annotation ",id," non disponible")
+                        self.get_logger().info(" Annotation "+str(id)+" non disponible")
                         continue
 
                     if annotation_info.id != id:
-                        print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
+                        self.get_logger().info(" Annotation "+str(annotation_info.id)+" reçue au lieu de "+str(id))
                         continue
 
                     if annotation_info.embedding is None:
@@ -347,15 +376,15 @@ class ExplorationNode(Node):
                         annotation_info = self.database_services.GetDatabaseAnnotation(id).info
 
                         if annotation_info is None:
-                            print(" Service GetDatabaseAnnotation non disponible")
+                            self.get_logger().info(" Service GetDatabaseAnnotation non disponible")
                             continue
 
                         if annotation_info.id == -1:
-                            print(" Annotation ",id," non disponible")
+                            self.get_logger().info(" Annotation "+str(id)+" non disponible")
                             continue
 
                         if annotation_info.id != id:
-                            print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
+                            self.get_logger().info(" Annotation "+str(annotation_info.id)+" reçue au lieu de "+str(id))
                             continue
 
                         if annotation_info.embedding is None:
@@ -386,7 +415,7 @@ class ExplorationNode(Node):
                 self.database_services.SetDatabaseCategoryEmbeddings(cat_info.id, e_clusters_list, score_cluster_list)
                 self.check_model_update = True
 
-            print(" Category embedding generation finished")
+            self.get_logger().info(" Category embedding generation finished")
 
     def _task_loop_scan(self):
         first_scan = True
@@ -397,7 +426,7 @@ class ExplorationNode(Node):
                 time.sleep(60.0)
             else:
                 first_scan = False
-            print("Task loop for scan started")
+            self.get_logger().info("Task loop for scan started")
 
             cat_info_list_request = self.database_services.GetAllDatabaseCategories()
 
@@ -410,8 +439,8 @@ class ExplorationNode(Node):
             personne_cat_exist = False
             for cat_info in cat_info_list:
                 if cat_info.id == -1:
-                    print(" Categorie ",cat_info.id," non disponible")
-                    print(cat_info)
+                    self.get_logger().info(" Categorie "+str(cat_info.id)+" non disponible")
+                    self.get_logger().info(str(cat_info))
                     continue
                 
                 # check if the cat is "personne"
@@ -433,16 +462,16 @@ class ExplorationNode(Node):
                     annotation_info = self.database_services.GetDatabaseAnnotation(id).info
 
                     if annotation_info is None:
-                        print(" Service GetDatabaseAnnotation non disponible")
+                        self.get_logger().info(" Service GetDatabaseAnnotation non disponible")
                         continue
 
                     if annotation_info.id == -1:
-                        print(" Annotation ",id," non disponible")
-                        print(annotation_info)
+                        self.get_logger().info(" Annotation "+str(id)+" non disponible")
+                        self.get_logger().info(str(annotation_info))
                         continue
 
                     if annotation_info.id != id:
-                        print(" Annotation ",annotation_info.id," reçue au lieu de ",id)
+                        self.get_logger().info(" Annotation "+str(annotation_info.id)+" reçue au lieu de "+str(id))
                         continue
 
                     # Check if embedding is generated
@@ -462,7 +491,7 @@ class ExplorationNode(Node):
             if not personne_cat_exist:
                 self.database_services.RegisterDatabaseCategory("personne")
             
-            print("Scan ended")
+            self.get_logger().info("Scan ended")
     
     def _task_loop_update_working_model(self):
         time_since_last_check = 0.0
@@ -476,17 +505,21 @@ class ExplorationNode(Node):
                 time_since_last_check += 0.05
                 continue
 
+            image_is_none = False
             with self.input_lock:
                 if self.input_image is None:
-                    time.sleep(5.0)
-                    continue
+                    image_is_none = True
+
+            if image_is_none:
+                time.sleep(5.0)
+                continue
 
             time_since_last_check = 0.0
             self.check_model_update = False
             # update embeddings
             self._update_working_model()
 
-            print("Working model updated in", time.time() - start, "seconds")
+            self.get_logger().info("Working model updated in" + str( time.time() - start)+ "seconds")
 
     def _task_loop_inference(self):
         last_input_get_time = time.time()
@@ -494,30 +527,33 @@ class ExplorationNode(Node):
         while True:
 
             # sleep
-            if( last_loop_time < self.inference_dt):
-                time.sleep(self.inference_dt - last_loop_time)
+            time.sleep(max(0,self.inference_dt - last_loop_time))
             start_time = time.time()
 
             # Getting image to process
-            with self.input_lock:
+            
 
-                if(last_input_get_time > self.input_update_time):
+            no_image_itt = 0
+            img_to_process = None 
+            while(no_image_itt < 10) and (img_to_process is None):
+                with self.input_lock:
+                    if ( (last_input_get_time < self.input_update_time) and (self.input_image is not None)):
+                        img_to_process = self.input_image.copy()
+                        last_input_get_time = time.time()
+                        break
+
+                no_image_itt += 1
+                time.sleep(0.025)
+
+            if img_to_process is None:
                     last_loop_time = time.time() - start_time
-                    print("No new image to process")
+                    self.get_logger().info("No new image to process")
                     continue
-
-                if self.input_image is None:
-                    last_loop_time = time.time() - start_time
-                    print("No new image to process")
-                    continue
-
-                img_to_process = self.input_image.copy()
-                last_input_get_time = time.time()
 
             # inference
             with self.working_model_lock:
                 if self.working_model is None:
-                    print("No working model available")
+                    self.get_logger().info("No working model available")
                     time.sleep(10.0)
                     last_loop_time = time.time() - start_time
                     continue
@@ -614,6 +650,7 @@ class ExplorationNode(Node):
 
             # publish predictions
             self.pub_predictions.publish(prediction_result)
+            self.ann_cb_hz.tic()
 
             # get loop time
             last_loop_time = time.time() - start_time
@@ -624,17 +661,17 @@ class ExplorationNode(Node):
 
             # sleep
             time.sleep(5.0)
-            print("Task loop for detect new object started")
+            self.get_logger().info("Task loop for detect new object started")
 
             # Getting image to process
             with self.output_lock:
 
                 if(last_input_get_time > self.output_update_time):
-                    print("No new image to process")
+                    self.get_logger().info("No new image to process for new object detection")
                     continue
 
                 if self.output_image is None:
-                    print("No new image to process")
+                    self.get_logger().info("No new image to process for new object detection")
                     continue
 
                 img_to_process = self.output_image.copy()
