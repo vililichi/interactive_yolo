@@ -3,7 +3,7 @@ from cv_bridge import CvBridge
 import rclpy
 from threading import Thread, Lock
 from rclpy.node import Node
-from interactive_yolo_utils import workspace_dir
+from interactive_yolo_utils import workspace_dir, FreqMonitor
 from speaklisten import SpeakListen
 
 from database_service.database_service import DatabaseServices
@@ -28,28 +28,6 @@ try:
     from playsound import playsound
 except:
     playsoud_available = False
-
-class FreqMonitor:
-    def __init__(self, name:str, display_time:float, logger, verbose = False):
-        self.logger = logger
-        self.itt = 0
-        self.name = name
-        self.display_time = display_time
-        self.start_time = time.time()
-        self.verbose = verbose
-        self.frequency = 0
-    
-    def tic(self):
-        self.itt += 1
-        now = time.time()
-        delta_t = now - self.start_time
-        if delta_t > self.display_time:
-            self.frequency = self.itt / delta_t
-            if self.verbose:
-                self.logger.info(f'{self.name}: {self.frequency:.2f} Hz')
-            self.itt = 0
-            self.start_time = now
-
 
 class QuestionLoopNode(Node):
 

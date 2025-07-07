@@ -5,6 +5,7 @@ from .utils.model_loader.base_model import base_model, sam_model, fast_sam_model
 from .utils.model_loader.fast_model import generate_fast_model
 from .utils.new_object_detection_helper import new_object_detection, NewObjectDetectionParameters
 from .utils.embedding_generator import EmbeddingGenerator
+from interactive_yolo_utils import FreqMonitor
 from tensor_msg_conversion import float32TensorToTorchTensor, boolTensorToNdArray
 import time
 from typing import List, Tuple, Any, Dict, Union
@@ -23,33 +24,6 @@ from ultralytics.models.yolo.yoloe.predict import YOLOEVPSegPredictor
 
 import torch
 import numpy as np
-
-from queue import PriorityQueue
-
-import cv2
-
-
-class FreqMonitor:
-    def __init__(self, name:str, display_time:float, logger, verbose = False):
-        self.logger = logger
-        self.itt = 0
-        self.name = name
-        self.display_time = display_time
-        self.start_time = time.time()
-        self.verbose = verbose
-        self.frequency = 0
-    
-    def tic(self):
-        self.itt += 1
-        now = time.time()
-        delta_t = now - self.start_time
-        if delta_t > self.display_time:
-            self.frequency = self.itt / delta_t
-            if self.verbose:
-                self.logger.info(f'{self.name}: {self.frequency:.2f} Hz')
-            self.itt = 0
-            self.start_time = now
-
 
 class ExplorationNode(Node):
 
