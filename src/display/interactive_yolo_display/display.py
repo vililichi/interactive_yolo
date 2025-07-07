@@ -18,7 +18,7 @@ class DisplayNode(Node):
                                                 depth=1)
         
         self.widget = ScaledImage()
-        self.widget.show()
+        self.widget.showFullScreen()
         
         self.img_lock = Lock()
         self.cv_bridge = CvBridge()
