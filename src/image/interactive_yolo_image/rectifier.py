@@ -4,6 +4,8 @@ from rclpy.node import Node
 import numpy as np
 import rclpy
 from cv_bridge import CvBridge
+from threading import Thread, Lock
+import time
 
 class RectifierNode(Node):
     def __init__(self):
@@ -12,9 +14,13 @@ class RectifierNode(Node):
         qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
                                                 history=rclpy.qos.HistoryPolicy.KEEP_LAST,
                                                 depth=1)
+        
+        self.map_lock = Lock()
+        self.img_lock = Lock()
 
         self.cv_bridge = CvBridge()
         self.mapx, self.mapy = None, None
+        self.cv_image = None
 
         # Setup model
         self.pub = self.create_publisher(Image, 'interactive_yolo/image_rect', qos_profile=qos_policy)
@@ -24,33 +30,57 @@ class RectifierNode(Node):
         self.ttop_camera_raw_subscriber = self.create_subscription( CompressedImage, 'interactive_yolo/rect_camera_compressed', self.rect_camera_compressed_cb, qos_profile=qos_policy)
         self.ttop_camera_info_subscriber = self.create_subscription( CameraInfo, 'interactive_yolo/rect_camera_info', self.rect_camera_info_cb, qos_profile=qos_policy)
 
-    def rect_camera_raw_cb(self, msg:Image):
+        self.thread = Thread(target=self.rect_camera_loop, daemon=True)
+        self.thread.start()
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
-        if( self.mapx is not None and self.mapy is not None ):
-            cv_image = cv2.remap(cv_image, self.mapx, self.mapy, cv2.INTER_LINEAR)
-            self.pub.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
-            self.pub_compressed.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+    def rect_camera_loop(self):
 
-    def rect_camera_compressed_cb(self, msg:CompressedImage):
+        mapx = None
+        mapy = None
+        while True:
+            time.sleep(1.0)
+            with self.map_lock:
+                if( self.mapx is not None and self.mapy is not None ):
+                    mapx = self.mapx
+                    mapy = self.mapy
+                    break
+        
+        while True:
+            time.sleep(0.01)
+            cv_image = None
 
-        cv_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
-        if( self.mapx is not None and self.mapy is not None ):
-            cv_image = cv2.remap(cv_image, self.mapx, self.mapy, cv2.INTER_LINEAR)
+            with self.img_lock:
+                if( self.cv_image is not None ):
+                    cv_image = self.cv_image
+                    self.cv_image = None
+                else:
+                    continue
+
+            cv_image = cv2.remap(cv_image, mapx, mapy, cv2.INTER_LINEAR)
             self.pub.publish(self.cv_bridge.cv2_to_imgmsg(cv_image, "bgr8"))
             self.pub_compressed.publish(self.cv_bridge.cv2_to_compressed_imgmsg(cv_image, "jpg"))
 
+
+    def rect_camera_raw_cb(self, msg:Image):
+
+        with self.img_lock:
+            self.cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
+
+    def rect_camera_compressed_cb(self, msg:CompressedImage):
+
+        with self.img_lock:
+            self.cv_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
+
     def rect_camera_info_cb(self, msg:CameraInfo):
 
-        if( self.mapx is not None and self.mapy is not None ):
-            pass
-
-        self.cameraMatrix = np.array(msg.k).reshape((3, 3))
-        self.distortion = np.array(msg.d)
-        self.rectify = np.array(msg.r).reshape((3, 3))
-        self.w = msg.width
-        self.h = msg.height
-        self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.cameraMatrix, self.distortion, self.rectify, None, (self.w, self.h), cv2.CV_32FC1)
+        with self.map_lock:
+            if( self.mapx is None and self.mapy is None ):
+                self.cameraMatrix = np.array(msg.k).reshape((3, 3))
+                self.distortion = np.array(msg.d)
+                self.rectify = np.array(msg.r).reshape((3, 3))
+                self.w = msg.width
+                self.h = msg.height
+                self.mapx, self.mapy = cv2.initUndistortRectifyMap(self.cameraMatrix, self.distortion, self.rectify, None, (self.w, self.h), cv2.CV_32FC1)
 
 def main(args=None):
     rclpy.init()
