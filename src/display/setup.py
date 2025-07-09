@@ -22,7 +22,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'display_node = interactive_yolo_display.display:main'
+            'display_node = interactive_yolo_display.display:main',
+            'speak_console = interactive_yolo_display.speak_console:main'
         ],
     },
 )
