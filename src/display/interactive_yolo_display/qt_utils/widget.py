@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, pyqtSignal
 import cv2
 import numpy as np
 
@@ -42,3 +42,45 @@ class ScaledImage(QtWidgets.QWidget):
             self._setImageWithSize(self._cv_image, self._img_size)
 
         return out
+    
+class MySignalEmitter(QObject):
+    # Define a custom signal with a value
+    signal = pyqtSignal(str)
+
+class ConsoleWidget(QtWidgets.QWidget):
+    def __init__(self): 
+        super().__init__()
+
+        self.out_text = ""
+        self.input_callback = None
+
+        self.log_signal = MySignalEmitter()
+ 
+        # create objects
+        label = QtWidgets.QLabel()
+        self.le = QtWidgets.QLineEdit()
+        self.te = QtWidgets.QTextEdit()
+        self.log_signal.signal.connect(self.te.setPlainText)
+
+        # layout
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(label)
+        layout.addWidget(self.le)
+        layout.addWidget(self.te)
+        self.setLayout(layout) 
+
+        # create connection
+        self.le.returnPressed.connect(self._enter_cb)
+    
+    def log(self, role:str, message:str):
+        self.out_text += "["+role+"]: "+message+"\n"
+        self.log_signal.signal.emit(self.out_text)
+    
+    def _log(self):
+        self.out_text += "["+self.role+"]: "+self.message+"\n"
+        self.te.setPlainText(self.out_text)
+
+    def _enter_cb(self):
+        text = self.le.text()
+        if self.input_callback is not None:
+            self.input_callback(text)
