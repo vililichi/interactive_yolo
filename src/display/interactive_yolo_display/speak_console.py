@@ -25,8 +25,11 @@ class SpeakConsoleNode(Node):
         self.listen_thread = Thread(target=self.listen_loop, daemon=True)
         self.listen_thread.start()
 
-        self.speak_listen_ttop.talk_start_cb = self.speak_start_cb
-        self.speak_listen_ttop.talk_end_cb = self.talk_end_cb
+        #self.speak_listen_ttop.talk_start_cb = self.speak_start_cb
+        #self.speak_listen_ttop.talk_end_cb = self.talk_end_cb
+
+        #self.speak_listen_ttop.listen_start_cb = self.listen_start_cb
+        #self.speak_listen_ttop.listen_end_cb = self.listen_end_cb
     
     def speak_start_cb(self):
         with self.log_lock:
@@ -35,6 +38,14 @@ class SpeakConsoleNode(Node):
     def talk_end_cb(self):
         with self.log_lock:
             self.log_list.append(("SYS", "T-Top end talking"))
+
+    def listen_start_cb(self):
+        with self.log_lock:
+            self.log_list.append(("SYS", "T-Top start listening"))
+
+    def listen_end_cb(self):
+        with self.log_lock:
+            self.log_list.append(("SYS", "T-Top end listening"))
 
     def input_callback(self, text):
         self.speak_listen_ttop.wait_talking_end()
@@ -46,11 +57,14 @@ class SpeakConsoleNode(Node):
     def listen_loop(self):
         while True:
             time.sleep(0.5)
-            text = self.speak_listen_ttop.listen()
+            text = self.speak_listen_ttop.get_listen()
             if text != "":
                 with self.log_lock:
                     self.log_list.append(("LIS", text))
             self.update_console()
+            
+            if( not self.speak_listen_ttop.is_listening() and not self.speak_listen_ttop.is_talking()):
+                self.speak_listen_ttop.start_listen()
 
     def update_console(self):
         with self.log_lock:
