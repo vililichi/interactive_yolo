@@ -24,9 +24,6 @@ class DisplayNode(Node):
         self.cv_bridge = CvBridge()
         self.cv_image = None
 
-        self.pub = self.create_publisher(Image, 'interactive_yolo/image_rect', qos_profile=qos_policy)
-        self.pub_compressed = self.create_publisher(CompressedImage, 'interactive_yolo/image_rect/compressed', qos_profile=qos_policy)
-
         self.ttop_camera_raw_subscriber = self.create_subscription( Image, 'interactive_yolo/display_input', self.input_raw_cb, qos_profile=qos_policy)
         self.ttop_camera_raw_subscriber = self.create_subscription( CompressedImage, 'interactive_yolo/display_input_compressed', self.input_compressed_cb, qos_profile=qos_policy)
 
