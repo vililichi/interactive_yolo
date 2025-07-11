@@ -13,7 +13,7 @@ class SpeakListenTTOP():
         self.sub_is_talking = node.create_subscription(Bool, "ttop_remote_proxy/is_talking", self._is_talking_callback, 1)
         self.sub_is_listening = node.create_subscription(Bool, "ttop_remote_proxy/is_listening", self._is_listening_callback, 1)
         self.pub_tts = node.create_publisher(String, 'ttop_remote_proxy/tts', 1)
-        self.pub_tts_start = node.create_publisher(Bool, 'ttop_remote_proxy/start_tts', 1)
+        self.pub_tts_start = node.create_publisher(Bool, 'ttop_remote_proxy/start_stt', 1)
 
         self.talk_start_cb = None
         self.talk_end_cb = None
