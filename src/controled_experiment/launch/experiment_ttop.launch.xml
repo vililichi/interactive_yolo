@@ -1,0 +1,6 @@
+<launch>
+
+    <include file="$(find-pkg-share demos)/launch/remote_proxy.launch.xml">
+    </include>
+
+</launch>
