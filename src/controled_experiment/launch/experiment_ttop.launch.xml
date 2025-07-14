@@ -1,6 +1,6 @@
 <launch>
 
-    <include file="$(find-pkg-share demos)/launch/remote_proxy.launch.xml">
+    <include file="$(find-pkg-share remote_proxy)/launch/remote_proxy.launch.xml">
     </include>
 
 </launch>
