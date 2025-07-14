@@ -53,9 +53,11 @@ class Experiment_node(Node):
         self.last_state = (self.state, self.sub_state)
         self.state = state
         self.sub_state = 0
+        self.get_logger().info("Set state: "+str(self.state))
 
     def return_to_last_state(self):
         self.state, self.sub_state = self.last_state
+        self.get_logger().info("Return to last state: "+str(self.state))
 
     def listen_on(self):
         if not self.speak_listen.is_listening() and not self.speak_listen.is_talking():
@@ -79,13 +81,13 @@ class Experiment_node(Node):
 
     def sleep_state(self):
 
-        self.listen_on()
-        user_input = self.try_listen()
-
         if self.sub_state == 0:
             self.animator.sleep()
             self.sub_state = 1
             return
+
+        self.listen_on()
+        user_input = self.try_listen()
 
         if user_input != "":
             text = """A scientist talk to an user to explain an experiment with a robot named T-Top.
@@ -125,7 +127,7 @@ class Experiment_node(Node):
                 self.speak("Je vais donc me rendormir.")
                 self.set_state(STATE_SLEEP)
         
-    def confirm_experiment_end_state(self):
+    def confirm_end_state(self):
         
         self.listen_on()
         user_input = self.speak_listen.get_listen()
@@ -151,7 +153,15 @@ class Experiment_node(Node):
                 self.animator.normal()
                 self.return_to_last_state()
 
-    def start_State(self):
+    def start_state(self):
+
+        if self.sub_state == 0:
+            self.animator.normal()
+            self.sub_state = 1
+            self.speak("Ok, l'expérience est commencé.")
+            self.speak("Cependant, celle-ci consiste à attendre que vous demendez d'arrêter l'expérience.")
+            self.speak("Je suis sensé ignorer toutes les autres discussions.")
+            return
 
         self.listen_on()
         user_input = self.try_listen()

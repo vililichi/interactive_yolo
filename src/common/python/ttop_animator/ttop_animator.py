@@ -15,15 +15,15 @@ class AnimatorTTOP():
         self.pub_face = self.node.create_publisher(CompressedImage, 'ttop_remote_proxy/display_input/compressed', 1)
         self.bridge = cv_bridge.CvBridge()
 
-        self.lock = Lock
+        self.lock = Lock()
 
         self.gesture_name = None
         self.emotion_img = None
         self.custom_img = None
 
         self.eyes = Eyes()
-        self.eyes.eye_color = (255,100,0)
-        self.eyes.skin_color = (50,100,100)
+        self.eyes.eye_color = (255,255,255)
+        self.eyes.skin_color = (0,0,0)
         self.actual_emotion = "sleep"
 
         self.eyes.set_emotion(self.actual_emotion)
@@ -36,7 +36,7 @@ class AnimatorTTOP():
 
     def _blink_loop(self):
         while True:
-            self.wink()
+            self.blink()
             time.sleep(max(random.gauss(2.5, 1.0),0))
     
     def _update_robot(self):
