@@ -99,23 +99,25 @@ class LLMInterpreter:
     
     def ask_question_answer_choice(self, question:str, text:str, choices:List[str])->str:
         
+        formated_choice_to_choice = dict()
         choice_counter = dict()
-
-        choices_str = "["
+        formated_choices = []
         for choice in choices:
-            choices_str += "'"+choice + "', "
-            choice_counter[choice] = 0
-        choices_str = choices_str[:-2] + "]"
+            formated_choice = choice.lower().strip("' ")
+            formated_choices.append(formated_choice)
+            formated_choice_to_choice[formated_choice] = choice
+            choice_counter[formated_choice] = 0
 
         for i in range(self.nbr_itt):
             answer = self.choice_chain.invoke({"question": question, "text": text, "choices": str(choices)}).lower()
+
             answer = answer.strip("' ")
 
-            if answer not in choices:
+            if answer not in formated_choices:
                 answer = answer.split('(')[0]
                 answer = answer.strip("' ")
             
-            if answer in choices:
+            if answer in formated_choices:
                 choice_counter[answer] += 1
                 if choice_counter[answer] > self.nbr_itt/2:
                     break
@@ -126,7 +128,7 @@ class LLMInterpreter:
             score = choice_counter[choice]
             if score > max_score:
                 max_score = score
-                max_choice = choice
+                max_choice = formated_choice_to_choice[choice]
             elif score == max_score:
                 max_choice = None
     

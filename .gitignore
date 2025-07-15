@@ -22,3 +22,4 @@ database/questions.json
 tools/*/output/
 tools/*/input/
 tools/captured_images/
+sam2_l.pt

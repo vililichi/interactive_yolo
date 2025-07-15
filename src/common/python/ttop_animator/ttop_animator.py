@@ -96,7 +96,7 @@ class AnimatorTTOP():
 
     def check_table(self):
         with self.lock:
-            self.gesture_name = "check_table"
+            self.gesture_name = "sad"
             self.set_emotion("curious")
 
     def sleep(self):

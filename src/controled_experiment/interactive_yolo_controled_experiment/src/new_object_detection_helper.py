@@ -9,6 +9,7 @@ from typing import List, Tuple
 class NewObjectDetectionParameters():
     def __init__(self):
         self.model_yolo_result = None
+        self.model_yolo_result_score_exponant = None
         self.model_sam_result = None
         self.explain_iou_exp = 1.0
         self.explain_conf_exp = 1.2
@@ -44,11 +45,12 @@ def new_object_detection(parameters:NewObjectDetectionParameters):
 
     masks_yolo = []
     confs_yolo = []
-    labels_yolo = []
     if( results_yolo.masks is not None):
         masks_yolo = [ x for x in torch.unbind(extract_resized_masks(results_yolo))]
-        confs_yolo = [ x.item() for x in torch.unbind(results_yolo.boxes.conf)]
-        labels_yolo = [ " [ CONF = {conf:.2f}, NAME = {name} ]".format(conf = confs_yolo[i], name=results_yolo.names[results_yolo.boxes.cls[i].item()]) for i in range(len(confs_yolo)) ]
+        if parameters.model_yolo_result_score_exponant is not None:
+            confs_yolo = [ x.item() ** parameters.model_yolo_result_score_exponant[int(results_yolo.boxes.cls[i].item())] for i, x in enumerate(torch.unbind(results_yolo.boxes.conf))]
+        else:
+            confs_yolo = [ x.item() for x in torch.unbind(results_yolo.boxes.conf)]
 
     # Try explain
     explication_id, explication_score = try_explain(masks_sam, masks_yolo, confs_yolo, iou_exp=parameters.explain_iou_exp, conf_exp=parameters.explain_conf_exp)
