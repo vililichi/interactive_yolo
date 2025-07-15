@@ -6,6 +6,8 @@ from llm_interpreter import LLMInterpreter
 from ttop_animator import AnimatorTTOP
 from .src.camera import Camera
 from .src.model import Model
+from .src.question_sorting import sort_questions, question_filter
+from .src.question_presentation import generate_question_presentation
 
 from matplotlib import pyplot as plt
 
@@ -26,6 +28,9 @@ STATE_CALIBRATION = 5
 STATE_IMAGE_CAPTURE = 6
 STATE_IMAGE_VALIDATION = 7
 STATE_IMAGE_ANALYSIS = 8
+STATE_QUESTION = 9
+STATE_VALIDATE_QUESTION = 10
+STATE_SAVE_ANSWER = 11
 
 objects_classes = [
     "humain",
@@ -109,6 +114,12 @@ class Experiment_node(Node):
                 self.image_validation()
             elif self.state == STATE_IMAGE_ANALYSIS:
                 self.image_analysis()
+            elif self.state == STATE_QUESTION:
+                self.question_state()
+            elif self.state == STATE_VALIDATE_QUESTION:
+                self.validate_question_state()
+            elif self.state == STATE_SAVE_ANSWER:
+                self.save_answer_state()
             else:
                 raise ValueError(f"Invalid state: {self.state}")
             time.sleep(0.1) 
@@ -139,7 +150,7 @@ class Experiment_node(Node):
             self.speak_listen.start_listen()
     
     def listen_off(self):
-        
+
         self.speak_listen.stop_listen()
         while not self.speak_listen.listen_texts.empty():
             self.speak_listen.listen_texts.get()
@@ -252,30 +263,13 @@ class Experiment_node(Node):
 
     def start_state(self):
 
-        if self.sub_state == 0:
+        if len(self.questions) > 0:
+            self.set_state(STATE_QUESTION)
+        else:
             self.listen_off()
-            self.animator.sad()
-            self.sub_state = 1
-            self.speak("À partir de ce moment, l'expérience n'est pas encore programmée.")
-            self.speak("Vous pouvez demander de mettre fin à l'expérience")
-            self.animator.normal()
-            return
-        
-        if not self.animator.actual_emotion == "normal":
-            self.animator.normal()
-
-        if self.calibration_image is not None and self.animator.custom_img is None:
-            self.listen_off()
-            self.speak("Je profite de l'occasion pour vous montrer l'image de calibration.")
-            self.animator.set_custom_img(self.calibration_image)
-            self.speak("la voici")
-
-        self.listen_on()
-        user_input = self.try_listen()
-
-        if self.check_for_experiment_end(user_input):
-            self.animator.remove_custom_img()
-            return
+            self.animator.happy()
+            self.speak("J'ai terminé de poser toutes mes questions.")
+            self.set_state(STATE_END)
         
     def end_state(self):
 
@@ -340,48 +334,134 @@ class Experiment_node(Node):
         if self.sub_state == 0:
             self.listen_off()
             self.sub_state = 1
-            self.animator.normal()
+            self.animator.show()
+            if self.object_image is None:
+                self.get_logger().info("Trying to send None image")
             self.animator.set_custom_img(self.object_image)
             self.speak("Voici la photo que j'ai prise.")
-            self.speak("Voulez vous recommencer la prise de la photo?")
+            self.speak("La photo est-elle adéquate?")
             return
         
         self.listen_on()
         user_input = self.try_listen()
 
         if user_input != "":
-            text = "An IA ask to the user \"Voici la photo que j'ai prise. Voulez vous recommencer la prise de la photo?\""
+            text = "An IA ask to the user \"Voici la photo que j'ai prise. La photo est-elle adéquate?\""
             text +="\nThe user answer with \""+user_input+"\""
-            answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user validate want to restart the photo capture?", text, yes_threshold = 0.5)
+            answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user validate the photo?", text, yes_threshold = 0.7)
 
+            self.animator.remove_custom_img()
             if answer:
-                self.animator.remove_custom_img()
+                self.set_state(STATE_IMAGE_ANALYSIS)
+            else:
                 self.set_state(STATE_IMAGE_CAPTURE)
                 self.sub_state = 2
-            else:
-                self.animator.remove_custom_img()
-                self.set_state(STATE_IMAGE_ANALYSIS)
+                
 
     def image_analysis(self):
-
+        
+        self.listen_off()
+        self.animator.normal()
         self.speak_listen.speak("J'analyse actuellement la photo afin de trouver des questions qui me permetteront de mieux la comprendre.")
     
-        self.questions = self.model.generate_question(self.object_image)
+        questions = self.model.generate_question(self.object_image)
+        questions, questions_score = sort_questions(questions)
+        self.questions = question_filter(questions, questions_score, 0.2, 5)
+        self.nbr_asked_questions = 0
         time.sleep(0.5)
 
         while self.speak_listen.is_talking():
             time.sleep(0.1)
 
+        self.speak("J'ai "+ str(len(self.questions))+" questions à vous poser")
         self.set_state(STATE_START)
 
     def question_state(self):
-        pass
 
+        if self.sub_state == 0:
+            self.listen_off()
+            self.animator.normal()
+            self.speak(generate_question_presentation(self.nbr_asked_questions ))        
 
+            question = self.questions[0]
+            self.nbr_asked_questions += 1
 
+            if len(self.questions) > 1:
+                self.questions = self.questions[1:]
+            else:
+                self.questions = []
 
-    
-    
+            self.question_image = question.create_image(self.object_image)
+            if self.question_image is None:
+                self.get_logger().info("Trying to send None image")
+            self.animator.set_custom_img(self.question_image)
+            self.animator.show()
+            self.speak("Quel est cet objet?")
+
+            self.sub_state = 1
+            return
+        
+        if self.sub_state == 2:
+            if self.question_image is None:
+                self.get_logger().info("Trying to send None image")
+            self.animator.set_custom_img(self.question_image)
+            self.animator.show()
+            self.speak("Quel est cet objet?")
+            self.sub_state = 1
+            return
+        
+        self.listen_on()
+        user_input = self.try_listen()
+
+        if self.check_for_experiment_end(user_input):
+            self.animator.remove_custom_img()
+            return
+        
+        if user_input != "":
+            text = "An IA ask to the user \"Quel est cet objet?\""
+            text +="\nThe user answer with \""+user_input+"\""
+            answer = self.llm_interpreter.ask_question_answer_choice("What is the object?", text, choices=objects_choices)
+            if answer is None:
+                self.speak("Désolé, je n'ai pas compris")
+            else:
+                self.question_answer = answer
+                self.animator.remove_custom_img()
+                self.set_state(STATE_VALIDATE_QUESTION)
+
+    def validate_question_state(self):
+        if self.sub_state == 0:
+            self.listen_off()
+            self.sub_state = 1
+            self.animator.happy()
+            self.animator.remove_custom_img()
+            self.speak("Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer)
+            self.speak("Est-ce que j'ai bien compris?")
+            return
+        
+        self.listen_on()
+        user_input = self.try_listen()
+
+        if self.check_for_experiment_end(user_input):
+            self.animator.remove_custom_img()
+            return
+
+        if user_input != "":
+            text = "An IA ask to the user \"Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer+". Est-ce que j'ai bien compris?\""
+            text +="\nThe user answer with \""+user_input+"\""
+            answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the object is "+self.question_answer+"?", text, yes_threshold = 0.65)
+
+            if answer:
+                self.set_state(STATE_SAVE_ANSWER)
+            else:
+                self.set_state(STATE_QUESTION)
+                self.sub_state = 2
+
+    def save_answer_state(self):
+        self.listen_off()
+        self.speak("Réponse enregistrée")
+        self.speak("Je vous remercie de m'aider dans mon apprentissage")
+
+        self.set_state(STATE_START)
 
 
 def main(args=None):

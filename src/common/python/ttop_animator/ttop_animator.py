@@ -21,6 +21,8 @@ class AnimatorTTOP():
         self.emotion_img = None
         self.custom_img = None
 
+        self.last_update = time.time()
+
         self.eyes = Eyes()
         self.eyes.eye_color = (255,255,255)
         self.eyes.skin_color = (0,0,0)
@@ -49,13 +51,23 @@ class AnimatorTTOP():
         elif self.emotion_img is not None:
             self.pub_face.publish(self.bridge.cv2_to_compressed_imgmsg(self.emotion_img))
 
-    def set_custom_img(self, img):
-        self.custom_img = img
+        self.last_update = time.time()
+    
+    def _update_robot_safe(self):
+        min_dt = 0.2
+        dt = time.time() - self.last_update
+        time.sleep(max(min_dt - dt,0))
         self._update_robot()
+
+    def set_custom_img(self, img):
+        with self.lock:
+            self.custom_img = img
+            self._update_robot_safe()
     
     def remove_custom_img(self):
-        self.custom_img = None
-        self._update_robot()
+        with self.lock:
+            self.custom_img = None
+            self._update_robot_safe()
 
     def set_emotion(self, emotion:str):
         if self.custom_img is None:
@@ -67,26 +79,27 @@ class AnimatorTTOP():
                 self._update_robot()
                 time.sleep(dt)
             self.actual_emotion = emotion
+            self._update_robot_safe()
 
         else:
             self.eyes.set_emotion(emotion)
             self.emotion_img = self.eyes.img
-            self._update_robot()
+            self._update_robot_safe()
             self.actual_emotion = emotion
 
     def normal(self):
         with self.lock:
-            self.gesture_name = "slow_origin_all"
+            self.gesture_name = "slow_origin_head"
             self.set_emotion("normal")
 
     def happy(self):
         with self.lock:
-            self.gesture_name = "slow_origin_all"
+            self.gesture_name = "slow_origin_head"
             self.set_emotion("happy")
 
     def angry(self):
         with self.lock:
-            self.gesture_name = "slow_origin_all"
+            self.gesture_name = "slow_origin_head"
             self.set_emotion("angry")
 
     def what(self):
@@ -109,6 +122,11 @@ class AnimatorTTOP():
             self.gesture_name = "sad"
             self.set_emotion("sad")
     
+    def show(self):
+        with self.lock:
+            self.gesture_name = "showing"
+            self._update_robot_safe()
+
     def blink(self):
         with self.lock:
             if self.custom_img is None:
@@ -125,6 +143,7 @@ class AnimatorTTOP():
                     self.emotion_img = self.eyes.img
                     self._update_robot()
                     time.sleep(dt)
+                self._update_robot_safe()
 
 
 

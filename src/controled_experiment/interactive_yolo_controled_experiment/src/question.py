@@ -43,3 +43,5 @@ class Question():
         x2 = min(x2+100, img_bgr_mask.shape[0]-1)
 
         img_bgr_mask = img_bgr_mask[x1:x2, y1:y2, :]
+
+        return img_bgr_mask
