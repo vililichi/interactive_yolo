@@ -75,7 +75,7 @@ class Model():
         self.pe = torch.cat(pe_list, dim=1)
         self.yoloe_model.set_classes(self.alias_name_list, self.pe)
 
-    def generate_question(self, image)->List[Question]:
+    def generate_question(self, image:np.ndarray)->List[Question]:
 
         questions = []
 
@@ -92,7 +92,7 @@ class Model():
             estimation_conf = unexplained_estimation_conf[i]
             embedding = self.generate_embeddings_from_mask(mask, image)
 
-            questions.append(Question(mask = mask, embedding = embedding, mask_conf = mask_conf, explain_score = estimation_conf))
+            questions.append(Question(mask = mask, embedding = embedding, mask_conf = mask_conf, explain_score = estimation_conf, image_shape=image.shape))
         
         return questions
 

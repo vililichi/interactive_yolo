@@ -6,10 +6,10 @@ from llm_interpreter import LLMInterpreter
 from ttop_animator import AnimatorTTOP
 from .src.camera import Camera
 from .src.model import Model
-from .src.question_sorting import sort_questions, question_filter
+from .src.question_sorting import sort_questions, question_filter, question_nms
 from .src.question_presentation import generate_question_presentation
 
-from matplotlib import pyplot as plt
+import random
 
 from threading import Thread
 
@@ -52,7 +52,7 @@ objects_classes = [
     "poisson",
     "viande",
     "fruit",
-    "legume",
+    "légume",
     "dessert",
     "autre plat principal",
     "autre accompagnement"
@@ -79,13 +79,12 @@ class Experiment_node(Node):
         self.speak_listen = SpeakListenTTOP(self)
         self.llm_interpreter = LLMInterpreter()
         self.animator = AnimatorTTOP(self)
-        self.camera = Camera(self, 'interactive_yolo/image_rect')
+        self.camera = Camera(self, 'interactive_yolo/experiment_image_input')
 
         self.listen_off()
 
         self.model = Model(classes_list=objects_classes)
 
-        self.calibration_image = None
         self.object_image = None
 
         self.nbr_question = 0
@@ -280,12 +279,32 @@ class Experiment_node(Node):
 
     def calibration_state(self):
         
-        self.listen_off()
-        self.animator.check_table()
-        self.speak("Cheeeeeeeeeeese")
-        self.calibration_image = self.camera.capture()
-        self.speak("Calibration terminée.")
-        self.return_to_last_state()
+        if self.sub_state == 0:
+            self.listen_off()
+            self.sub_state = 1
+            self.animator.happy()
+            self.speak("Je me met en position pour la calibration.")
+            self.speak("Donnez moi un signal lorsque la calibration est terminée.")
+            self.animator.check_table()
+            return
+        
+        self.listen_on()
+        user_input = self.try_listen()
+
+        if self.check_for_experiment_end(user_input):
+            return
+        
+        if user_input != "":
+            text = """A user is doing an experiment with a robot named T-Top.
+            T-Top is waiting for a signal to take a picture.
+            T-Top said \"Je me met en position pour la calibration. Donnez moi un signal lorsque la calibration est terminée.\""""
+            text +="\nThe user said \""+user_input+"\""
+            answer = self.llm_interpreter.ask_question_asymetric_yes_no("Has T-Top received the signal indicating the end of the calibration?", text, yes_threshold=0.7)
+            if answer:
+                self.listen_off()
+                self.speak("Fin de la calibration")
+                self.set_state(STATE_SLEEP)
+                return
 
     def image_capture_state(self):
 
@@ -357,7 +376,6 @@ class Experiment_node(Node):
                 self.set_state(STATE_IMAGE_CAPTURE)
                 self.sub_state = 2
                 
-
     def image_analysis(self):
         
         self.listen_off()
@@ -366,6 +384,7 @@ class Experiment_node(Node):
     
         questions = self.model.generate_question(self.object_image)
         questions, questions_score = sort_questions(questions)
+        questions, questions_score = question_nms(questions, questions_score, 0.7)
         self.questions = question_filter(questions, questions_score, 0.2, 5)
         self.nbr_asked_questions = 0
         time.sleep(0.5)
@@ -402,6 +421,11 @@ class Experiment_node(Node):
             return
         
         if self.sub_state == 2:
+            self.listen_off()
+            self.animator.sad()
+            self.speak("Je suis désolé de ne pas avoir compris.")
+            self.speak("Je vais reposer ma question.")
+
             if self.question_image is None:
                 self.get_logger().info("Trying to send None image")
             self.animator.set_custom_img(self.question_image)
@@ -422,6 +446,7 @@ class Experiment_node(Node):
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_answer_choice("What is the object?", text, choices=objects_choices)
             if answer is None:
+                self.listen_off()
                 self.speak("Désolé, je n'ai pas compris")
             else:
                 self.question_answer = answer
@@ -459,7 +484,16 @@ class Experiment_node(Node):
     def save_answer_state(self):
         self.listen_off()
         self.speak("Réponse enregistrée")
-        self.speak("Je vous remercie de m'aider dans mon apprentissage")
+
+        second_phrase_id = random.randint(0,9)
+        if second_phrase_id == 0:
+            self.speak("Je vous remercie de m'aider dans mon apprentissage")
+        if second_phrase_id == 1:
+            self.speak("Je me sens maintenant un peut plus intelligent")
+        if second_phrase_id == 2:
+            self.speak("J'espère que cette information me sera utile")
+        if second_phrase_id == 3:
+            self.speak("Je rêve qu'un jour, je puisse être aussi intelligent que vous")
 
         self.set_state(STATE_START)
 

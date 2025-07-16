@@ -24,7 +24,8 @@ setup(
         'console_scripts': [
             'display_node = interactive_yolo_display.display:main',
             'speak_console = interactive_yolo_display.speak_console:main',
-            'gesture_panel = interactive_yolo_display.gesture_panel:main'
+            'gesture_panel = interactive_yolo_display.gesture_panel:main',
+            'crop_panel = interactive_yolo_display.crop_panel:main'
         ],
     },
 )

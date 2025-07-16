@@ -22,7 +22,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rectifier_node = interactive_yolo_image.rectifier:main'
+            'rectifier_node = interactive_yolo_image.rectifier:main',
+            'crop_node = interactive_yolo_image.crop:main'
         ],
     },
 )
