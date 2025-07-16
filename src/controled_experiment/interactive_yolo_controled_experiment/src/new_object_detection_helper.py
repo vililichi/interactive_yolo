@@ -1,7 +1,4 @@
 import numpy as np
-import cv2
-import random
-import math
 from ultralytics.utils.ops import scale_image
 import torch
 from typing import List, Tuple

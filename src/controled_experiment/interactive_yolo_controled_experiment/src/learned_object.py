@@ -17,7 +17,7 @@ class LearnedCluster():
         return self.type == learned_object.type
     
     def object_distance(self, learned_object:LearnedObject)->float:
-        error = torch.dist(self.embedding, learned_object.embedding, p=2).item()
+        return torch.dist(self.embedding, learned_object.embedding, p=2).item()
 
     def add_object(self, learned_object:LearnedObject):
         self.embedding = (self.embedding*self.nbr_objects + learned_object.embedding)/(self.nbr_objects+1)

@@ -50,6 +50,14 @@ class CropNode(Node):
         w_min = min(w1, w2)
         w_max = max(w1, w2)
 
+        if (h_max - h_min ) < 2:
+            h_max = min((h_min + 2),h-1)
+            h_min = max((h_max -2), 0)
+
+        if (w_max - w_min ) < 2:
+            w_max = min((w_min + 2),w-1)
+            w_min = max((w_max -2), 0)
+
         out_image = cv_image[h_min:h_max, w_min:w_max, :]
 
         self.pub.publish(self.cv_bridge.cv2_to_imgmsg(out_image, "bgr8"))

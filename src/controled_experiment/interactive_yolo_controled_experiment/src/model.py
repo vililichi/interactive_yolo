@@ -13,16 +13,16 @@ class Model():
     def __init__(self, classes_list=List[str]):
         self.yoloe_model = yoloe_model()
         self.sam_model = sam_model()
+        self.ready_for_detection = False
 
         self.classes_list:List[str] = classes_list
-        self.classes_clusters:Dict[str, List[LearnedCluster]] = {}
         self.cluster_dist_threshold = 0.5
 
-        for class_name in self.classes_list:
-            class_embedding = self.generate_embeddings_from_class_name(class_name)
-            self.add_learned_object(LearnedObject(class_name, class_embedding))
+        self.classes_clusters:Dict[str, List[LearnedCluster]] = {}
+        self.reset_learning()
 
     def generate_embeddings_from_class_name(self, class_name:str)->torch.tensor:
+        self.ready_for_detection = False
         return self.yoloe_model.get_text_pe([class_name,]).cpu()
     
     def generate_embeddings_from_mask(self, mask:np.ndarray, refer_image)->torch.tensor:
@@ -32,12 +32,22 @@ class Model():
             cls=[0,]
         )
 
+        self.ready_for_detection = False
         return self.yoloe_model.generate_vpe(refer_image=refer_image, visual_prompts=visual_prompts, predictor=YOLOEVPSegPredictor, verbose=False).cpu()
+
+    def reset_learning(self):
+        self.ready_for_detection = False
+        self.classes_clusters = {}
+        for class_name in self.classes_list:
+            class_embedding = self.generate_embeddings_from_class_name(class_name)
+            self.add_learned_object(LearnedObject(class_name, class_embedding))
 
     def add_learned_object(self, learned_object:LearnedObject):
 
         if learned_object.type not in self.classes_list:
             return
+        
+        self.ready_for_detection = False
 
         if learned_object.type in self.classes_clusters:
             best_id = -1
@@ -57,6 +67,9 @@ class Model():
 
     def configure_model_for_detection(self):
 
+        if self.ready_for_detection:
+            return
+
         pe_list = []
         self.alias_name_list = []
         self.category_alias_to_name = dict()
@@ -75,11 +88,15 @@ class Model():
         self.pe = torch.cat(pe_list, dim=1)
         self.yoloe_model.set_classes(self.alias_name_list, self.pe)
 
+        self.ready_for_detection = True
+
     def generate_question(self, image:np.ndarray)->List[Question]:
 
         questions = []
 
         parameters = NewObjectDetectionParameters()
+
+        self.configure_model_for_detection()
         parameters.model_yolo_result = self.yoloe_model(image)[0]
         parameters.model_sam_result = self.sam_model(image)[0]
 

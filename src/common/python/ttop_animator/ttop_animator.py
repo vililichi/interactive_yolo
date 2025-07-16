@@ -127,6 +127,11 @@ class AnimatorTTOP():
             self.gesture_name = "showing"
             self._update_robot_safe()
 
+    def thinking(self):
+        with self.lock:
+            self.gesture_name = "thinking"
+            self.set_emotion("worried")
+
     def blink(self):
         with self.lock:
             if self.custom_img is None:

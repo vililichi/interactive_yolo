@@ -31,7 +31,7 @@ class Question():
         dist = math.sqrt((center_x-img_center_x)**2 + (center_y-img_center_y)**2)
         norm_value = math.sqrt(img_center_y**2 + img_center_x**2)
 
-        return 1.0 - max((dist / (norm_value+0.00001)),0)
+        return max(1.0 - (dist / (norm_value+0.00001)),0)
 
     def create_image(self, ref_image:np.ndarray)->np.ndarray:
 
