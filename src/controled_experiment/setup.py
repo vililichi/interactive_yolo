@@ -25,7 +25,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'orchestrator_node = interactive_yolo_controled_experiment.experiment_orchestrator_node:main'
+            'orchestrator_node = interactive_yolo_controled_experiment.experiment_orchestrator_node:main',
+            'questions_inspector = interactive_yolo_controled_experiment.questions_inspector:main'
         ],
     },
 )

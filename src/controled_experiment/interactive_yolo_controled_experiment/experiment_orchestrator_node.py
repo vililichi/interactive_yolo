@@ -75,6 +75,7 @@ class Experiment_node(Node):
         self.state = STATE_INIT
         self.sub_state = 0
         self.last_state = (STATE_INIT, 0)
+        self.transcript = ""
 
         self.speak_listen = SpeakListenTTOP(self)
         self.llm_interpreter = LLMInterpreter()
@@ -97,6 +98,7 @@ class Experiment_node(Node):
         self.memory_instances = ["instance_test",]
         validation_sets= self.data_manager.list_validation_set()
         learning_sets= self.data_manager.list_learning_set()
+        transcript_sets = self.data_manager.list_transcript_set()
         self.get_logger().info("Validation sets = "+str(validation_sets))
         self.get_logger().info("Learning sets = "+str(learning_sets))
         for instance in self.memory_instances:
@@ -104,9 +106,14 @@ class Experiment_node(Node):
                 self.data_manager.add_validation_set(instance)
             if instance not in learning_sets:
                 self.data_manager.add_learning_set(instance)
+            if instance not in transcript_sets:
+                self.data_manager.add_transcript_set(instance)
 
         self.state_machine_thread = Thread(target=self.state_machine_loop, daemon=True)
         self.state_machine_thread.start()
+
+    def add_to_transcript(self, agent:str, text:str):
+        self.transcript += "["+agent+"] "+text + "\n"
 
     def state_machine_loop(self):
         while True:
@@ -175,9 +182,12 @@ class Experiment_node(Node):
             self.speak_listen.listen_texts.get()
 
     def try_listen(self):
-       return self.speak_listen.get_listen()
+       listen_result = self.speak_listen.get_listen()
+       self.add_to_transcript("INPUT", listen_result)
+       return listen_result
     
     def speak(self, text):
+        self.add_to_transcript("OUTPUT", text)
         self.speak_listen.speak(text)
         time.sleep(0.5)
         while self.speak_listen.is_talking():
@@ -380,7 +390,9 @@ class Experiment_node(Node):
         now = str(int(time.time()))
         image_name = "image_"+now
         learning_name = "learning_"+now
+        transcript_name = "letranscript_arning_"+now
         self.data_manager.register_image_in_validation_set(self.selected_instance, image_name, self.object_image)
+        self.data_manager.register_transcript_in_transcript_set(self.selected_instance, transcript_name, self.transcript)
         self.data_manager.save_learning(self.selected_instance, learning_name, self.learning)
         self.data_manager.save_learning(self.selected_instance, "last", self.learning)
 
@@ -502,13 +514,15 @@ class Experiment_node(Node):
         
         self.listen_off()
         self.animator.thinking()
-        self.speak_listen.speak("J'analyse actuellement la photo afin de trouver des questions qui me permetteront de mieux la comprendre.")
+        text = "J'analyse actuellement la photo afin de trouver des questions qui me permetteront de mieux la comprendre."
+        self.speak_listen.speak(text)
+        self.add_to_transcript("OUTPUT", text)
    
         ###### question generation #####
         questions = self.model.generate_question(self.object_image)
         questions, questions_score = sort_questions(questions)
         questions, questions_score = question_nms(questions, questions_score, 0.7)
-        self.questions = question_filter(questions, questions_score, 0.2, 5)
+        self.questions = question_filter(questions, questions_score, 0.2, 3)
         self.nbr_asked_questions = 0
         time.sleep(0.5)
 

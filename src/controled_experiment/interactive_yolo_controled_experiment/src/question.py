@@ -9,11 +9,11 @@ class Question():
         self.embedding = embedding
         self.mask_conf = mask_conf
         self.explain_score = explain_score
-        self.image_shape = image_shape  
+        self.image_shape = image_shape
 
     def get_bbox(self)->tuple:
-        xs = np.any(self.mask, axis=1)
-        ys = np.any(self.mask, axis=0)
+        ys = np.any(self.mask, axis=1)
+        xs = np.any(self.mask, axis=0)
         y1, y2 = np.where(ys)[0][[0, -1]]
         x1, x2 = np.where(xs)[0][[0, -1]]
 
@@ -58,10 +58,10 @@ class Question():
         (x1, x2, y1, y2) =  self.get_bbox()
 
         y1 = max(y1-100, 0)
-        y2 = min(y2+100, img_bgr_mask.shape[1]-1)
+        y2 = min(y2+100, img_bgr_mask.shape[0]-1)
         x1 = max(x1-100, 0)
-        x2 = min(x2+100, img_bgr_mask.shape[0]-1)
+        x2 = min(x2+100, img_bgr_mask.shape[1]-1)
 
-        img_bgr_mask = img_bgr_mask[x1:x2, y1:y2, :]
+        img_bgr_mask = img_bgr_mask[y1:y2, x1:x2, :]
 
         return img_bgr_mask
