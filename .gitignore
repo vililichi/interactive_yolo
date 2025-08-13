@@ -24,3 +24,4 @@ tools/*/input/
 tools/captured_images/
 sam2_l.pt
 controled_experiment/data/
+audio_test_sample/

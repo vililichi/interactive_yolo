@@ -12,8 +12,8 @@ class NewObjectDetectionParameters():
         self.explain_conf_exp = 1.2
         self.min_mask_size = 0
         self.min_mask_relative_mask_size = 0.0
-        self.min_mask_score = 0.25
-        self.max_explication_score = 0.6
+        self.min_mask_score = 0.0
+        self.max_explication_score = 1.0
     
 def new_object_detection(parameters:NewObjectDetectionParameters):
     
