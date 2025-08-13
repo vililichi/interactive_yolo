@@ -78,6 +78,9 @@ class Experiment_node(Node):
         self.transcript = ""
 
         self.speak_listen = SpeakListenTTOP(self)
+        self.speak_listen.talk_end_cb = self.reset_last_speak
+        self.speak_listen.voice_detected_end_cb = self.reset_last_speak
+        self.speak_listen.voice_processing_end_cb = self.reset_last_speak
         self.llm_interpreter = LLMInterpreter()
         self.animator = AnimatorTTOP(self)
         self.camera = Camera(self, 'interactive_yolo/experiment_image_input')
@@ -113,7 +116,9 @@ class Experiment_node(Node):
         self.state_machine_thread.start()
 
     def add_to_transcript(self, agent:str, text:str):
-        self.transcript += "["+agent+"] "+text + "\n"
+        transcript_Str = "["+agent+"] "+text
+        self.get_logger().info("<TRANSCRIPT>: "+transcript_Str)
+        self.transcript += transcript_Str + "\n"
 
     def state_machine_loop(self):
         while True:
@@ -161,15 +166,20 @@ class Experiment_node(Node):
         self.get_logger().info("Return to last state: "+str(self.state))
 
     def check_for_experiment_end(self, user_input)->bool:
+        
         if user_input == "":
             return False
         
+        self.listen_off()
         text = "An IA and an user are doing an experiment where the user try to teach something to the IA."
         text +="\nDuring the dialog, the user says \""+user_input+"\""
         answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user want to end the experiment?", text, yes_threshold = 0.8)
         if answer:
             self.set_state(STATE_CONFIRM_END)
         return answer
+
+    def reset_last_speak(self):
+        self.last_speak_time = time.time()
 
     def listen_on(self):
         if not self.speak_listen.is_listening() and not self.speak_listen.is_talking():
@@ -181,9 +191,13 @@ class Experiment_node(Node):
         while not self.speak_listen.listen_texts.empty():
             self.speak_listen.listen_texts.get()
 
+    def voice_detected(self)->bool:
+        return self.speak_listen.is_voice_detected() or self.speak_listen.is_voice_processing_active()
+
     def try_listen(self):
        listen_result = self.speak_listen.get_listen()
-       self.add_to_transcript("INPUT", listen_result)
+       if len(listen_result)>0:
+        self.add_to_transcript("INPUT", listen_result)
        return listen_result
     
     def speak(self, text):
@@ -192,7 +206,6 @@ class Experiment_node(Node):
         time.sleep(0.5)
         while self.speak_listen.is_talking():
             time.sleep(0.1)
-        self.last_speak_time = time.time()
         return
 
     def init_state(self):
@@ -230,6 +243,7 @@ class Experiment_node(Node):
         user_input = self.try_listen()
 
         if user_input != "":
+            self.listen_off()
             text = """A scientist talk to an user to explain an experiment with a robot named T-Top.
             T-Top is waiting for a signal to start the experiment.
             The signal always containt the word "expérience"."""
@@ -299,7 +313,7 @@ class Experiment_node(Node):
         if not self.animator.actual_emotion == "normal":
             self.animator.normal()
 
-        if self.time_since_last_speak() > 15:
+        if self.time_since_last_speak() > 15 and not self.voice_detected():
             self.listen_off()
             self.speak("Personne ne semble vouloir me répondre.")
             self.speak("Je vais donc me rendormir.")
@@ -309,6 +323,7 @@ class Experiment_node(Node):
         user_input = self.try_listen()
 
         if user_input != "":
+            self.listen_off()
             text = "An IA ask to the user \"Voulez-vous commencez l'expérience?\""
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user validate?", text, yes_threshold = 0.5)
@@ -335,7 +350,7 @@ class Experiment_node(Node):
         if not self.animator.actual_emotion == "normal":
             self.animator.normal()
 
-        if self.time_since_last_speak() > 15:
+        if self.time_since_last_speak() > 15 and not self.voice_detected():
             if self.sub_state == 2:
                 self.listen_off()
                 self.animator.sad()
@@ -356,6 +371,7 @@ class Experiment_node(Node):
         user_input = self.try_listen()
 
         if user_input != "":
+            self.listen_off()
             text = "An IA ask to the user \"Jai l'impression que vous voulez arrêter l'expérience.Est-ce que j'ai raison?\""
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user want to end the experiment?", text, yes_threshold = 0.5)
@@ -416,6 +432,7 @@ class Experiment_node(Node):
             return
         
         if user_input != "":
+            self.listen_off()
             text = """A user is doing an experiment with a robot named T-Top.
             T-Top is waiting for a signal to take a picture.
             T-Top said \"Je me met en position pour la calibration. Donnez moi un signal lorsque la calibration est terminée.\""""
@@ -438,7 +455,7 @@ class Experiment_node(Node):
             self.speak("D'abord, placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.")
             return
         
-        if self.time_since_last_speak() > 30:
+        if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
             self.speak("D'abord, placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.")
             return
@@ -460,13 +477,13 @@ class Experiment_node(Node):
             return
         
         if user_input != "":
+            self.listen_off()
             text = """A user is doing an experiment with a robot named T-Top.
             T-Top is waiting for a signal to take a picture.
             T-Top said \"Placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.\""""
             text +="\nThe user said \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do T-Top received the signal to take a picture?", text, yes_threshold=0.7)
             if answer:
-                self.listen_off()
                 self.animator.check_table()
                 self.speak("Cheeeeeeeeeeese")
                 self.object_image = self.camera.capture()
@@ -488,7 +505,7 @@ class Experiment_node(Node):
             self.speak("La photo est-elle adéquate?")
             return
         
-        if self.time_since_last_speak() > 10:
+        if self.time_since_last_speak() > 10 and not self.voice_detected():
             self.listen_off()
             self.animator.set_custom_img(self.object_image)
             self.speak("Voici la photo que j'ai prise.")
@@ -499,6 +516,7 @@ class Experiment_node(Node):
         user_input = self.try_listen()
 
         if user_input != "":
+            self.listen_off()
             text = "An IA ask to the user \"Voici la photo que j'ai prise. La photo est-elle adéquate?\""
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the user validate the photo?", text, yes_threshold = 0.7)
@@ -571,7 +589,7 @@ class Experiment_node(Node):
             self.sub_state = 1
             return
         
-        if self.time_since_last_speak() > 15:
+        if self.time_since_last_speak() > 15 and not self.voice_detected():
             self.listen_off()
             self.animator.set_custom_img(self.question_image)
             self.speak("Quel est cet objet?")
@@ -585,6 +603,7 @@ class Experiment_node(Node):
             return
         
         if user_input != "":
+            self.listen_off()
             text = "An IA ask to the user \"Quel est cet objet?\""
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_answer_choice("What is the object?", text, choices=objects_choices)
@@ -606,7 +625,7 @@ class Experiment_node(Node):
             self.speak("Est-ce que j'ai bien compris?")
             return
         
-        if self.time_since_last_speak() > 15:
+        if self.time_since_last_speak() > 15 and not self.voice_detected():
             self.listen_off()
             self.animator.remove_custom_img()
             self.speak("Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer)
@@ -621,6 +640,7 @@ class Experiment_node(Node):
             return
 
         if user_input != "":
+            self.listen_off()
             text = "An IA ask to the user \"Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer+". Est-ce que j'ai bien compris?\""
             text +="\nThe user answer with \""+user_input+"\""
             answer = self.llm_interpreter.ask_question_asymetric_yes_no("Do the object is "+self.question_answer+"?", text, yes_threshold = 0.65)

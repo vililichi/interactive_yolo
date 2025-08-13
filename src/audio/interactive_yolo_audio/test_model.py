@@ -82,10 +82,14 @@ def install_vosk_model():
 
         print("installation finished")
 
+google_model = "phone_call"
 whisper_size = "large"
+apenia_model = "gpt-4o-transcribe"
 test_google = False
-test_whisper = True
+test_google_cloud = False
+test_whisper = False
 test_fast_whisper = False
+test_openia = True
 test_vosk = False
 
 r = sr.Recognizer()
@@ -101,6 +105,10 @@ google_errors = 0
 google_total_words = 0
 google_time = 0
 
+google_cloud_errors = 0
+google_cloud_total_words = 0
+google_cloud_time = 0
+
 whisper_errors = 0
 whisper_total_words = 0
 whisper_time = 0
@@ -108,6 +116,10 @@ whisper_time = 0
 fast_whisper_errors = 0
 fast_whisper_total_words = 0
 fast_whisper_time = 0
+
+openia_errors = 0
+openia_total_words = 0
+openia_time = 0
 
 vosk_errors = 0
 vosk_total_words = 0
@@ -120,8 +132,10 @@ for file, ref_text in input_list:
         audio = r.record(source)
 
         google_result = ""
+        google_cloud_result = ""
         whisper_result = ""
         fast_whisper_result = ""
+        openia_result = ""
         vosk_result = ""
 
         if test_google:
@@ -131,6 +145,14 @@ for file, ref_text in input_list:
             except:
                 pass
             google_time += time.time() - start_time
+
+        if test_google_cloud:
+            start_time = time.time()
+            try:
+                google_cloud_result = r.recognize_google_cloud(audio, credentials_json_path="/home/vililichi/ttop-316419-b9c1821f2f52.json", language_code='fr-FR', model=google_model)
+            except:
+                pass
+            google_cloud_time += time.time() - start_time
 
         if test_whisper:
             start_time = time.time()
@@ -148,6 +170,13 @@ for file, ref_text in input_list:
                 pass
             fast_whisper_time += time.time() - start_time
 
+        if test_openia:
+            start_time = time.time()
+            #try:
+            openia_result = r.recognize_openai(audio, language='fr', model=apenia_model)
+            #except:
+            #    pass
+            openia_time += time.time() - start_time
 
         if test_vosk:
             start_time = time.time()
@@ -162,6 +191,11 @@ for file, ref_text in input_list:
             google_errors += errors
             google_total_words += total_words
 
+        if test_google_cloud:
+            errors, total_words = pre_calculate_wer(ref_text, google_cloud_result)
+            google_cloud_errors += errors
+            google_cloud_total_words += total_words
+
         if test_whisper:
             errors, total_words = pre_calculate_wer(ref_text, whisper_result)
             whisper_errors += errors
@@ -171,6 +205,11 @@ for file, ref_text in input_list:
             errors, total_words = pre_calculate_wer(ref_text, fast_whisper_result)
             fast_whisper_errors += errors
             fast_whisper_total_words += total_words
+
+        if test_openia:
+            errors, total_words = pre_calculate_wer(ref_text, openia_result)
+            openia_errors += errors
+            openia_total_words += total_words
 
         if test_vosk:
             errors, total_words = pre_calculate_wer(ref_text, vosk_result)
@@ -186,6 +225,10 @@ for file, ref_text in input_list:
             print("**Google**")
             print(google_result)
 
+        if test_google_cloud:
+            print("**Google Cloud**")
+            print(google_cloud_result)
+
         if test_whisper:
             print("**Whisper**")
             print(whisper_result)
@@ -193,6 +236,10 @@ for file, ref_text in input_list:
         if test_fast_whisper:
             print("**Fast Whisper**")
             print(fast_whisper_result)
+
+        if test_openia:
+            print("**OpenIA**")
+            print(openia_result)
 
         if test_vosk:
             print("**Vosk**")
@@ -206,6 +253,11 @@ if test_google:
     print("WER: ",calculate_wer(google_errors, google_total_words)*100,"%")
     print("time: ",google_time,"s")
 
+if test_google_cloud:
+    print("**Google Cloud**")
+    print("WER: ",calculate_wer(google_cloud_errors, google_cloud_total_words)*100,"%")
+    print("time: ",google_cloud_time,"s")
+
 if test_whisper:
     print("**Whisper**")
     print("WER: ",calculate_wer(whisper_errors, whisper_total_words)*100,"%")
@@ -215,6 +267,13 @@ if test_fast_whisper:
     print("**Fast Whisper**")
     print("WER: ",calculate_wer(fast_whisper_errors, fast_whisper_total_words)*100,"%")
     print("time: ",fast_whisper_time,"s")
+
+if test_openia:
+    print("**OpenIA**")
+    print(openia_errors)
+    print(openia_total_words)
+    print("WER: ",calculate_wer(openia_errors, openia_total_words)*100,"%")
+    print("time: ",openia_time,"s")
 
 if test_vosk:
     print("**Vosk**")
