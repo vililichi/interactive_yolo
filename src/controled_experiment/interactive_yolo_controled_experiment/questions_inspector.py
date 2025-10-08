@@ -1,4 +1,4 @@
-from .src.model import Model
+from .src.model_bbox_clip import Model
 from .src.question_sorting import sort_questions, question_filter, question_nms
 from .src.data import DataManager
 from matplotlib import pyplot as plt
@@ -8,10 +8,10 @@ def main():
 
     ################# CHANGE VALUES HERE #########################
     validation_set = "instance_test"
-    validation_img = "image_1752707115"
+    validation_img = "image_1759931050"
 
     learning_set = "instance_test"
-    learning_name = ""
+    learning_name = "learning_1759931050"
 
     data_manager = DataManager()
 
@@ -79,12 +79,14 @@ def main():
         mask_conf = question.mask_conf
         explain_conf = question.explain_score
         centering_score = question.get_centering_score()
+        size_score = question.get_size_score()
 
         print("--------------------")
         print("score = ", score)
         print("mask_conf = ", mask_conf)
         print("explain_conf = ", explain_conf)
         print("centering_score = ", centering_score)
+        print("size_score = ", size_score)
         print("--------------------")
 
         question_img = question.create_image(image)

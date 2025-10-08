@@ -85,10 +85,9 @@ def fast_sam_model()->FastSAM:
         if not os.path.exists(sam_model_path):
             urlretrieve(sam_model_url, sam_model_path)
 
-        return FastSAM(sam_model_url)
+        generate_fast_sam_engine_model()
     
-    else:
-        return FastSAM(engine_sam_model_path)
+    return FastSAM(engine_sam_model_path)
     
 def generate_fast_sam_engine_model(use_dla = False):
     sam_model_path = os.path.join(models_dir(), FAST_SAM_MODEL_NAME + ".pt")

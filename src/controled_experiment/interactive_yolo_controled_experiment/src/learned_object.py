@@ -2,10 +2,11 @@ import torch
 import time
 
 class LearnedObject():
-    def __init__(self, type:str, embedding:torch.tensor):
+    def __init__(self, type:str, embedding:torch.tensor, seg_score = 1.0):
         self.type = type
         self.embedding = embedding
         self.creation_time = time.time()
+        self.seg_score = seg_score
 
 class LearnedCluster():
     def __init__(self, learned_object:LearnedObject):

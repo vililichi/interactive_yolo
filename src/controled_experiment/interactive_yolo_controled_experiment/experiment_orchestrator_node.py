@@ -5,7 +5,7 @@ from speaklisten import SpeakListenTTOP
 from llm_interpreter import LLMInterpreter
 from ttop_animator import AnimatorTTOP
 from .src.camera import Camera
-from .src.model import Model
+from .src.model_bbox_clip import Model
 from .src.question_sorting import sort_questions, question_filter, question_nms
 from .src.question_presentation import generate_question_presentation
 from .src.data import DataManager
@@ -224,8 +224,8 @@ class Experiment_node(Node):
             self.model.add_learned_object(learned_object)
 
         ###### init model #####
-        self.model.configure_model_for_detection()
-        self.model.yoloe_model(self.camera.capture())
+        #self.model.configure_model_for_detection()
+        #self.model.yoloe_model(self.camera.capture())
 
         ###### Init a variable to remove repeat in saving sentences #####
         self.last_saving_sentence_id = 10
@@ -452,12 +452,12 @@ class Experiment_node(Node):
             self.animator.happy()
             self.speak("Parfait, commençons l'expérience.")
             self.animator.normal()
-            self.speak("D'abord, placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.")
+            self.speak("D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
             return
         
         if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
-            self.speak("D'abord, placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.")
+            self.speak("D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
             return
 
         
@@ -540,7 +540,7 @@ class Experiment_node(Node):
         questions = self.model.generate_question(self.object_image)
         questions, questions_score = sort_questions(questions)
         questions, questions_score = question_nms(questions, questions_score, 0.7)
-        self.questions = question_filter(questions, questions_score, 0.2, 3)
+        self.questions = question_filter(questions, questions_score, 0.15, 3)
         self.nbr_asked_questions = 0
         time.sleep(0.5)
 
@@ -653,7 +653,7 @@ class Experiment_node(Node):
 
     def save_answer_state(self):
         self.listen_off()
-        self.learning.append(LearnedObject(self.question_answer, self.question.embedding))
+        self.learning.append(LearnedObject(self.question_answer, self.question.embedding, self.question.mask_conf))
         self.speak("Réponse enregistrée")
 
 

@@ -20,7 +20,7 @@ def sort_questions(questions:List[Question])->Tuple[List[Question], List[float]]
     return (question_out, score_out)
 
 def compute_question_score(question:Question)->float:
-    return (1.0 - question.explain_score) * (question.mask_conf) * (question.get_centering_score()**0.5)
+    return (1.0 - question.explain_score) * (question.mask_conf) * (question.get_centering_score()**0.5) * (question.get_size_score()**0.5)
 
 def question_nms(questions:List[Question], scores:List[float], map_threshold = 0.9)->Tuple[List[Question], List[float]]:
     questions_out:List[Question] = []
