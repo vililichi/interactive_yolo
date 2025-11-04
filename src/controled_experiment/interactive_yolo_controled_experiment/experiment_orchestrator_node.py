@@ -89,11 +89,14 @@ class Experiment_node(Node):
         self.data_manager = DataManager()
         #self.memory_instances = ["instance_1", "instance_2"]
         #self.memory_instances = ["famille_1","famille_2","famille_3"]# ["instance_test",]
-        validation_sets= self.data_manager.list_validation_set()
-        learning_sets= self.data_manager.list_learning_set()
-        transcript_sets = self.data_manager.list_transcript_set()
-        self.get_logger().info("Validation sets = "+str(validation_sets))
-        self.get_logger().info("Learning sets = "+str(learning_sets))
+        self.forced_memory_instance = None
+
+        #validation_sets= self.data_manager.list_validation_set()
+        #learning_sets= self.data_manager.list_learning_set()
+        #transcript_sets = self.data_manager.list_transcript_set()
+        #self.get_logger().info("Validation sets = "+str(validation_sets))
+        #self.get_logger().info("Learning sets = "+str(learning_sets))
+
         #for instance in self.memory_instances:
         #    if instance not in validation_sets:
         #        self.data_manager.add_validation_set(instance)
@@ -281,6 +284,9 @@ class Experiment_node(Node):
 
     def select_instance(self)->str:
 
+        if self.forced_memory_instance is not None:
+            return str(self.forced_memory_instance)
+
         return self.create_new_instance()
     
         #instance_size = []
@@ -310,6 +316,7 @@ class Experiment_node(Node):
         
         #id = random.randint(0, len(min_instance)-1 )
         #return min_instance[id]
+
 
     def confirm_start_state(self):
 
