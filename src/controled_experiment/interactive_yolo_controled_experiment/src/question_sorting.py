@@ -22,6 +22,23 @@ def sort_questions(questions:List[Question])->Tuple[List[Question], List[float]]
 def compute_question_score(question:Question)->float:
     return (1.0 - question.explain_score) * (question.mask_conf) * (question.get_centering_score()**0.5) * (question.get_size_score()**0.5)
 
+def question_filter_size(questions:List[Question], scores:List[float], min_relative_size = 0.0, max_relative_size = 1.0)->Tuple[List[Question], List[float]]:
+    questions_out:List[Question] = []
+    scores_out = []
+
+    for i in range(len(questions)):
+        
+        relative_size = questions[i].get_relative_size()
+        if relative_size > max_relative_size:
+            continue
+        if relative_size < min_relative_size:
+            continue
+
+        questions_out.append(questions[i])
+        scores_out.append(scores[i])
+
+    return (questions_out, scores_out)
+
 def question_nms(questions:List[Question], scores:List[float], map_threshold = 0.9)->Tuple[List[Question], List[float]]:
     questions_out:List[Question] = []
     scores_out = []
