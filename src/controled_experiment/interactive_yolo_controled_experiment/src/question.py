@@ -11,6 +11,7 @@ class Question():
         self.explain_score = explain_score
         self.image_shape = image_shape
         self.bbox = bbox
+        self.relative_size = None
 
     def get_bbox(self)->tuple:
 
@@ -39,12 +40,18 @@ class Question():
 
         return max(1.0 - (dist / (norm_value+0.00001)),0)
     
+    def get_relative_size(self):
+
+        if self.relative_size is None:
+            size = np.count_nonzero(self.mask)
+            img_size = self.image_shape[0]*self.image_shape[1]
+            self.relative_size = float(size)/float(img_size)
+
+        return self.relative_size
+    
     def get_size_score(self, min_optimal_size = 0.1, max_optimal_size = 0.5)->float:
 
-        size = np.count_nonzero(self.mask)
-        img_size = self.image_shape[0]*self.image_shape[1]
-        relative_size = float(size)/float(img_size)
-
+        relative_size = self.get_relative_size()
         if relative_size >= min_optimal_size and relative_size <= max_optimal_size:
             return 1.0
 

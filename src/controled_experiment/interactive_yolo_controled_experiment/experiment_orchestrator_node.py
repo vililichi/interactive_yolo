@@ -6,7 +6,7 @@ from llm_interpreter import LLMInterpreter
 from ttop_animator import AnimatorTTOP
 from .src.camera import Camera
 from .src.model_bbox_clip import Model
-from .src.question_sorting import sort_questions, question_filter, question_nms
+from .src.question_sorting import sort_questions, question_filter, question_nms, question_filter_size
 from .src.question_presentation import generate_question_presentation
 from .src.data import DataManager
 from .src.learned_object import LearnedObject
@@ -33,29 +33,16 @@ STATE_SAVE_ANSWER = 11
 STATE_INIT = 12
 
 objects_classes = [
-    "humain",
-    "meuble",
-    "ustensiles",
-    "vaisselle",
     "sandwich",
     "pâtes",
-    "tarte",
     "salade",
     "pizza",
-    "soupe",
     "boisson",
-    "riz",
-    "patate",
-    "fromage",
     "pain",
     "oeuf",
-    "poisson",
     "viande",
-    "fruit",
-    "légume",
+    "fruit et légume",
     "dessert",
-    "autre plat principal",
-    "autre accompagnement",
     "objet invalide"
 ]
 
@@ -95,22 +82,16 @@ class Experiment_node(Node):
         self.remaining_question : List[Question] = []
         self.last_speak_time = time.time()
 
+        self.nbr_image = 10
+        self.image_done_counter = 0
+
+        self.forced_end = False
+
         # Learning and dataset
         self.data_manager = DataManager()
-        #self.memory_instances = ["instance_1", "instance_2"]
-        self.memory_instances = ["instance_test",]
-        validation_sets= self.data_manager.list_validation_set()
-        learning_sets= self.data_manager.list_learning_set()
-        transcript_sets = self.data_manager.list_transcript_set()
-        self.get_logger().info("Validation sets = "+str(validation_sets))
-        self.get_logger().info("Learning sets = "+str(learning_sets))
-        for instance in self.memory_instances:
-            if instance not in validation_sets:
-                self.data_manager.add_validation_set(instance)
-            if instance not in learning_sets:
-                self.data_manager.add_learning_set(instance)
-            if instance not in transcript_sets:
-                self.data_manager.add_transcript_set(instance)
+        self.forced_memory_instance = None
+
+
 
         self.state_machine_thread = Thread(target=self.state_machine_loop, daemon=True)
         self.state_machine_thread.start()
@@ -150,7 +131,7 @@ class Experiment_node(Node):
                 self.init_state()
             else:
                 raise ValueError(f"Invalid state: {self.state}")
-            time.sleep(0.1) 
+            time.sleep(0.05) 
 
     def set_state(self, state):
         self.last_state = (self.state, self.sub_state)
@@ -203,9 +184,9 @@ class Experiment_node(Node):
     def speak(self, text):
         self.add_to_transcript("OUTPUT", text)
         self.speak_listen.speak(text)
-        time.sleep(0.5)
+        time.sleep(0.25)
         while self.speak_listen.is_talking():
-            time.sleep(0.1)
+            time.sleep(0.05)
         return
 
     def init_state(self):
@@ -223,9 +204,9 @@ class Experiment_node(Node):
         for learned_object in self.learning:
             self.model.add_learned_object(learned_object)
 
-        ###### init model #####
-        #self.model.configure_model_for_detection()
-        #self.model.yoloe_model(self.camera.capture())
+        ###### reset image counter #####
+        self.image_done_counter = 0
+        self.forced_end = False
 
         ###### Init a variable to remove repeat in saving sentences #####
         self.last_saving_sentence_id = 10
@@ -245,6 +226,7 @@ class Experiment_node(Node):
         if user_input != "":
             self.listen_off()
             text = """A scientist talk to an user to explain an experiment with a robot named T-Top.
+            Sometime T-Top is also named stoppe or christophe.
             T-Top is waiting for a signal to start the experiment.
             The signal always containt the word "expérience"."""
             text +="\nThe robot hear \""+user_input+"\""
@@ -269,54 +251,84 @@ class Experiment_node(Node):
             if answer:
                 self.set_state(STATE_CALIBRATION)
                 return
+            
+    def create_new_instance(self)->str:
+
+        validation_sets= self.data_manager.list_validation_set()
+        learning_sets= self.data_manager.list_learning_set()
+        transcript_sets = self.data_manager.list_transcript_set()
+
+        i = 0
+        while True:
+            instance_id = str(i)
+            if instance_id in validation_sets:
+                i += 1
+                continue
+            if instance_id in learning_sets:
+                i += 1
+                continue
+            if instance_id in transcript_sets:
+                i += 1
+                continue
+
+            self.data_manager.add_validation_set(instance_id)
+            self.data_manager.add_learning_set(instance_id)
+            self.data_manager.add_transcript_set(instance_id)
+
+            return instance_id
 
     def select_instance(self)->str:
-        instance_size = []
-        for instance in self.memory_instances:
-            nbr_validation = len(self.data_manager.list_images(instance))
-            instance_size.append(nbr_validation)
 
-        min_instance = None
-        min_instance_size = None
-        for i in range(len(instance_size)):
-            if min_instance_size is None:
-                min_instance = [self.memory_instances[i],]
-                min_instance_size = instance_size[i]
+        if self.forced_memory_instance is not None:
+            return str(self.forced_memory_instance)
 
-            elif instance_size[i] == min_instance_size:
-                min_instance.append(self.memory_instances[i])
+        return self.create_new_instance()
+    
+        #instance_size = []
+        #for instance in self.memory_instances:
+        #    nbr_validation = len(self.data_manager.list_images(instance))
+        #    instance_size.append(nbr_validation)
+
+        #min_instance = None
+        #min_instance_size = None
+        #for i in range(len(instance_size)):
+        #    if min_instance_size is None:
+        #        min_instance = [self.memory_instances[i],]
+        #        min_instance_size = instance_size[i]
+
+        #    elif instance_size[i] == min_instance_size:
+        #        min_instance.append(self.memory_instances[i])
             
-            elif instance_size[i] < min_instance_size:
-                min_instance = [self.memory_instances[i],]
-                min_instance_size = instance_size[i]
+        #    elif instance_size[i] < min_instance_size:
+        #        min_instance = [self.memory_instances[i],]
+        #        min_instance_size = instance_size[i]
         
-        if min_instance is None:
-            raise(Exception("No instance available"))
+        #if min_instance is None:
+        #    raise(Exception("No instance available"))
         
-        if len(min_instance) == 1:
-            return min_instance[0]
+        #if len(min_instance) == 1:
+        #    return min_instance[0]
         
-        id = random.randint(0, len(min_instance)-1 )
-        return min_instance[id]
+        #id = random.randint(0, len(min_instance)-1 )
+        #return min_instance[id]
+
 
     def confirm_start_state(self):
 
         if self.sub_state == 0:
             self.listen_off()
             self.animator.happy()
-            self.speak("Bonjour!")
+            self.speak("Bonjour! Voulez-vous commencez l'expérience?")
             self.animator.normal()
-            self.speak("Voulez-vous commencez l'expérience?")
             self.sub_state = 1
             return
         
         if not self.animator.actual_emotion == "normal":
             self.animator.normal()
 
-        if self.time_since_last_speak() > 15 and not self.voice_detected():
+        if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
-            self.speak("Personne ne semble vouloir me répondre.")
-            self.speak("Je vais donc me rendormir.")
+            self.speak("Personne ne semble vouloir me répondre. Je me rendors.")
             self.set_state(STATE_SLEEP)
         
         self.listen_on()
@@ -332,8 +344,7 @@ class Experiment_node(Node):
                 self.set_state(STATE_IMAGE_CAPTURE)
             else:
                 self.listen_off()
-                self.speak("J'ai compris que bous ne voulez pas commencer l'expérience.")
-                self.speak("Je vais donc me rendormir.")
+                self.speak("J'ai compris que vous ne voulez pas commencer l'expérience. Je me rendors.")
                 self.set_state(STATE_SLEEP)
         
     def confirm_end_state(self):
@@ -341,9 +352,8 @@ class Experiment_node(Node):
         if self.sub_state == 0:
             self.listen_off()
             self.animator.sad()
-            self.speak("Jai l'impression que vous voulez arrêter l'expérience.")
+            self.speak("Jai l'impression que vous voulez arrêter l'expérience. Ai-je raison?")
             self.animator.normal()
-            self.speak("Est-ce que j'ai raison?")
             self.sub_state = 1
             return
         
@@ -357,13 +367,13 @@ class Experiment_node(Node):
                 self.speak("Je vais prendre l'abscence de réponse pour un oui.")
                 self.animator.normal()
                 self.set_state(STATE_END)
+                self.forced_end = True
                 return
             else:
                 self.listen_off()
                 self.animator.sad()
-                self.speak("Jai l'impression que vous voulez arrêter l'expérience.")
+                self.speak("J'ai l'impression que vous voulez arrêter l'expérience. Ai-je raison?")
                 self.animator.normal()
-                self.speak("Est-ce que j'ai raison?")
                 self.sub_state = 2
                 return
         
@@ -378,10 +388,11 @@ class Experiment_node(Node):
 
             if answer:
                 self.set_state(STATE_END)
+                self.forced_end = True
             else:
                 self.listen_off()
                 self.animator.happy()
-                self.speak("Alors, nous allons continuer l'expérience.")
+                self.speak("Alors, continuons l'expérience.")
                 self.animator.normal()
                 self.return_to_last_state()
 
@@ -392,27 +403,43 @@ class Experiment_node(Node):
         else:
             self.listen_off()
             self.animator.happy()
-            self.speak("J'ai terminé de poser toutes mes questions.")
+            self.speak("J'ai terminé de poser mes questions sur cette image.")
             self.set_state(STATE_END)
+            self.forced_end = False
         
     def end_state(self):
 
-        self.listen_off()
-        self.animator.happy()
-        self.speak("Merci pour votre participation à l'expérience.")
-        self.animator.sleep()
-
         ##### save data #####
-        now = str(int(time.time()))
-        image_name = "image_"+now
-        learning_name = "learning_"+now
-        transcript_name = "letranscript_arning_"+now
-        self.data_manager.register_image_in_validation_set(self.selected_instance, image_name, self.object_image)
-        self.data_manager.register_transcript_in_transcript_set(self.selected_instance, transcript_name, self.transcript)
-        self.data_manager.save_learning(self.selected_instance, learning_name, self.learning)
-        self.data_manager.save_learning(self.selected_instance, "last", self.learning)
 
-        self.set_state(STATE_INIT)
+        if self.forced_end:
+            self.listen_off()
+            self.animator.happy()
+            self.speak("Merci pour votre participation à l'expérience.")
+            self.animator.sleep()
+            self.set_state(STATE_INIT)
+
+        else:
+            now = str(int(time.time()))
+            image_name = "image_"+now
+            learning_name = "learning_"+now
+            transcript_name = "letranscript_arning_"+now
+            self.data_manager.register_image_in_validation_set(self.selected_instance, image_name, self.object_image)
+            self.data_manager.register_transcript_in_transcript_set(self.selected_instance, transcript_name, self.transcript)
+            self.data_manager.save_learning(self.selected_instance, learning_name, self.learning)
+            self.data_manager.save_learning(self.selected_instance, "last", self.learning)
+
+            self.image_done_counter += 1
+            self.get_logger().info("self.image_done_counter: "+str(self.image_done_counter))
+            self.get_logger().info("self.nbr_image: "+str(self.nbr_image))
+            if self.image_done_counter < self.nbr_image:
+                self.set_state(STATE_IMAGE_CAPTURE)
+                self.sub_state = 3
+            else:
+                self.listen_off()
+                self.animator.happy()
+                self.speak("Merci pour votre participation à l'expérience.")
+                self.animator.sleep()
+                self.set_state(STATE_INIT)
 
     def calibration_state(self):
         
@@ -450,14 +477,14 @@ class Experiment_node(Node):
             self.listen_off()
             self.sub_state = 1
             self.animator.happy()
-            self.speak("Parfait, commençons l'expérience.")
+            self.speak("Parfait, commençons l'expérience. D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
             self.animator.normal()
-            self.speak("D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
+            self.speak("")
             return
         
         if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
-            self.speak("D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
+            self.speak("Placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
             return
 
         
@@ -465,9 +492,14 @@ class Experiment_node(Node):
             self.listen_off()
             self.sub_state = 1
             self.animator.normal()
-            self.speak("Nous allons alors recommencer la photo.")
+            self.speak("Recommençons la photo. Placez votre repas sur le napperon et donnez moi un signal.")
+            return
+        
+        if self.sub_state == 3:
+            self.listen_off()
+            self.sub_state = 1
             self.animator.normal()
-            self.speak("Placez votre repas sur le centre de la table et donnez moi un signal pour que je prenne une photo.")
+            self.speak("Passons au prochain repas. Placez votre repas sur le napperon et donnez moi un signal.")
             return
         
         self.listen_on()
@@ -487,7 +519,7 @@ class Experiment_node(Node):
                 self.animator.check_table()
                 self.speak("Cheeeeeeeeeeese")
                 self.object_image = self.camera.capture()
-                self.speak("Image capturée.")
+                #self.speak("Image capturée.")
 
                 self.set_state(STATE_IMAGE_VALIDATION)
                 return
@@ -501,14 +533,12 @@ class Experiment_node(Node):
             if self.object_image is None:
                 self.get_logger().info("Trying to send None image")
             self.animator.set_custom_img(self.object_image)
-            self.speak("Voici la photo que j'ai prise.")
             self.speak("La photo est-elle adéquate?")
             return
         
         if self.time_since_last_speak() > 10 and not self.voice_detected():
             self.listen_off()
             self.animator.set_custom_img(self.object_image)
-            self.speak("Voici la photo que j'ai prise.")
             self.speak("La photo est-elle adéquate?")
             return
         
@@ -532,20 +562,21 @@ class Experiment_node(Node):
         
         self.listen_off()
         self.animator.thinking()
-        text = "J'analyse actuellement la photo afin de trouver des questions qui me permetteront de mieux la comprendre."
+        text = "J'analyse la photo."
         self.speak_listen.speak(text)
         self.add_to_transcript("OUTPUT", text)
    
         ###### question generation #####
         questions = self.model.generate_question(self.object_image)
         questions, questions_score = sort_questions(questions)
+        questions, questions_score = question_filter_size(questions, questions_score, max_relative_size=0.85)
         questions, questions_score = question_nms(questions, questions_score, 0.7)
         self.questions = question_filter(questions, questions_score, 0.15, 3)
         self.nbr_asked_questions = 0
-        time.sleep(0.5)
+        time.sleep(0.2)
 
         while self.speak_listen.is_talking():
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         self.speak("J'ai "+ str(len(self.questions))+" questions à vous poser")
         self.set_state(STATE_START)
@@ -578,8 +609,7 @@ class Experiment_node(Node):
         if self.sub_state == 2:
             self.listen_off()
             self.animator.sad()
-            self.speak("Je suis désolé de ne pas avoir compris.")
-            self.speak("Je vais reposer ma question.")
+            self.speak("Je vais reposer la question.")
 
             if self.question_image is None:
                 self.get_logger().info("Trying to send None image")
@@ -589,7 +619,7 @@ class Experiment_node(Node):
             self.sub_state = 1
             return
         
-        if self.time_since_last_speak() > 15 and not self.voice_detected():
+        if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
             self.animator.set_custom_img(self.question_image)
             self.speak("Quel est cet objet?")
@@ -621,15 +651,13 @@ class Experiment_node(Node):
             self.sub_state = 1
             self.animator.happy()
             self.animator.remove_custom_img()
-            self.speak("Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer)
-            self.speak("Est-ce que j'ai bien compris?")
+            self.speak("L'objet est dans la catégorie "+self.question_answer+". Ai-je bien compris?")
             return
         
-        if self.time_since_last_speak() > 15 and not self.voice_detected():
+        if self.time_since_last_speak() > 30 and not self.voice_detected():
             self.listen_off()
             self.animator.remove_custom_img()
-            self.speak("Selon ma compréhension, l'objet se trouve dans la catégorie "+self.question_answer)
-            self.speak("Est-ce que j'ai bien compris?")
+            self.speak("L'objet est dans la catégorie "+self.question_answer+". Ai-je bien compris?")
             return
         
         self.listen_on()
@@ -659,7 +687,7 @@ class Experiment_node(Node):
 
         second_phrase_id = self.last_saving_sentence_id
         while(second_phrase_id == self.last_saving_sentence_id):
-            second_phrase_id = random.randint(0,9)
+            second_phrase_id = random.randint(0,50)
         self.last_saving_sentence_id = second_phrase_id
 
         if second_phrase_id == 0:
@@ -668,11 +696,8 @@ class Experiment_node(Node):
             self.speak("Je me sens maintenant un peut plus intelligent")
         if second_phrase_id == 2:
             self.speak("J'espère que cette information me sera utile")
-        if second_phrase_id == 3:
-            self.speak("Je rêve qu'un jour, je puisse être aussi intelligent que vous")
 
         self.set_state(STATE_START)
-
 
 def main(args=None):
 
@@ -682,7 +707,6 @@ def main(args=None):
 
     rclpy.spin(node)
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
