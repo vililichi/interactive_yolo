@@ -41,8 +41,12 @@ class GestureControlWidget(QtWidgets.QWidget):
         button.clicked.connect(self.animator.sleep)
         self.buttons.append(button)
 
-        button = QtWidgets.QPushButton(text = "wink", parent = self)
-        button.clicked.connect(self.animator.wink)
+        button = QtWidgets.QPushButton(text = "blink", parent = self)
+        button.clicked.connect(self.animator.blink)
+        self.buttons.append(button)
+
+        button = QtWidgets.QPushButton(text = "thinking", parent = self)
+        button.clicked.connect(self.animator.thinking)
         self.buttons.append(button)
 
 

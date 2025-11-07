@@ -70,7 +70,7 @@ class Experiment_node(Node):
         self.speak_listen.voice_processing_end_cb = self.reset_last_speak
         self.llm_interpreter = LLMInterpreter()
         self.animator = AnimatorTTOP(self)
-        self.camera = Camera(self, 'interactive_yolo/experiment_image_input')
+        self.camera = Camera(self, 'interactive_yolo/experiment_image_input', 'interactive_yolo/experiment_image_request')
 
         self.listen_off()
 
@@ -479,7 +479,6 @@ class Experiment_node(Node):
             self.animator.happy()
             self.speak("Parfait, commençons l'expérience. D'abord, placez votre repas sur le napperon et donnez moi un signal pour que je prenne une photo.")
             self.animator.normal()
-            self.speak("")
             return
         
         if self.time_since_last_speak() > 30 and not self.voice_detected():

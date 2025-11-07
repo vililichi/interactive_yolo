@@ -1,6 +1,7 @@
 from std_msgs.msg import String, Bool
 from sensor_msgs.msg import CompressedImage
 import cv_bridge
+import cv2
 import time
 from .eyes import Eyes
 import random
@@ -20,6 +21,10 @@ class AnimatorTTOP():
         self.gesture_name = None
         self.emotion_img = None
         self.custom_img = None
+
+        self.use_image_enhancement = True
+        self.alpha = 1.1
+        self.beta = 1.3
 
         self.last_update = time.time()
 
@@ -59,9 +64,15 @@ class AnimatorTTOP():
         time.sleep(max(min_dt - dt,0))
         self._update_robot()
 
+    def enhance_image(self, img):
+        if not self.use_image_enhancement:
+            return img
+        
+        return cv2.convertScaleAbs(img, alpha = self.alpha, beta = self.beta)
+
     def set_custom_img(self, img):
         with self.lock:
-            self.custom_img = img
+            self.custom_img = self.enhance_image(img)
             self._update_robot_safe()
     
     def remove_custom_img(self):

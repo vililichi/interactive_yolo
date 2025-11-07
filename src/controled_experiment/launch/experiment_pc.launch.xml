@@ -2,7 +2,7 @@
 
     <!-- Image Rectifier -->
     <node pkg="interactive_yolo_image" exec="rectifier_node" name="rectifier_node" output="screen">
-        <remap from="interactive_yolo/rect_camera_compressed" to="/camera_2d_wide_full_hd/image/compressed"/>
+        <remap from="interactive_yolo/rect_camera_compressed" to="ttop_remote_proxy/image_request_proxy_output/compressed"/>
         <remap from="interactive_yolo/rect_camera_info" to="camera_2d_wide_full_hd/camera_info"/>
     </node>
     <!-- Image Crop -->
@@ -16,10 +16,12 @@
         <remap from="interactive_yolo/crop_panel_output/x2" to="interactive_yolo/crop/x2"/>
         <remap from="interactive_yolo/crop_panel_output/y1" to="interactive_yolo/crop/y1"/>
         <remap from="interactive_yolo/crop_panel_output/y2" to="interactive_yolo/crop/y2"/>
+        <remap from="interactive_yolo/crop_panel_output/image_needed" to="ttop_remote_proxy/image_request_input/request"/>
     </node>
     <!-- Orchestrator -->
     <node pkg="interactive_yolo_controled_experiment" exec="orchestrator_node" name="orchestrator_node" output="screen">
         <remap from="interactive_yolo/experiment_image_input" to="interactive_yolo/image_cropped"/>
+        <remap from="interactive_yolo/experiment_image_request" to="ttop_remote_proxy/image_request_input/request"/>
     </node>
 
 </launch>

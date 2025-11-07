@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from sensor_msgs.msg import Image, CompressedImage
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 from rclpy.node import Node
 import rclpy
 from cv_bridge import CvBridge
@@ -48,8 +48,13 @@ class CropPanel(QtWidgets.QWidget):
         self._x2_publisher = self.node.create_publisher(Float32, 'interactive_yolo/crop_panel_output/x2',1)
         self._y1_publisher = self.node.create_publisher(Float32, 'interactive_yolo/crop_panel_output/y1',1)
         self._y2_publisher = self.node.create_publisher(Float32, 'interactive_yolo/crop_panel_output/y2',1)
+        self._image_needed_publisher = self.node.create_publisher(Bool, 'interactive_yolo/crop_panel_output/image_needed',1)
 
         self._image = ScaledImage()
+
+        self.update_button = QtWidgets.QPushButton(text = "UPDATE IMAGE", parent = self)
+        self.update_button.clicked.connect(self.update_image)
+        
 
         self.slider_x1 = LabeledSlider("X1")
         self.slider_x1.on_value_change = self._x1_cb
@@ -65,12 +70,17 @@ class CropPanel(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self._image, 4)
+        layout.addWidget(self.update_button)
         layout.addWidget(self.slider_x1,1)
         layout.addWidget(self.slider_x2,1)
         layout.addWidget(self.slider_y1,1)
         layout.addWidget(self.slider_y2,1)
         self.setLayout(layout) 
 
+    def update_image(self):
+        msg = Bool()
+        msg.data = True
+        self._image_needed_publisher.publish(msg)
 
     def setImage(self, cv_image):
         self._image.setImage(cv_image)
